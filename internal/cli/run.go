@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"strings"
+	"time"
 
 	st8client "github.com/geeper-io/st8/client"
 	"github.com/geeper-io/st8/internal/config"
@@ -17,6 +18,7 @@ type options struct {
 	stateDir    string
 	serverURL   string
 	token       string
+	timeout     time.Duration
 	localServer bool
 	scope       st8client.Scope
 }
@@ -50,6 +52,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) (int, err
 			stateDir:   config.Or(cfg.Server.Dir, config.DefaultStateDir()),
 			serverURL:  cfg.Server.URL,
 			token:      cfg.Server.Token,
+			timeout:    cfg.Server.Timeout,
 			scope: st8client.Scope{
 				Namespace: config.Or(cfg.Defaults.Namespace, "default"),
 				Branch:    config.Or(cfg.Defaults.Branch, "main"),

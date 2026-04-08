@@ -19,6 +19,7 @@ func (a *App) rootCommand(ctx context.Context) *cobra.Command {
 	// Config and auth flags — defaults come from the loaded config file.
 	root.PersistentFlags().StringVar(&a.opts.configPath, "config", a.opts.configPath, "path to config file")
 	root.PersistentFlags().StringVar(&a.opts.token, "token", a.opts.token, "bearer token for st8d authentication")
+	root.PersistentFlags().DurationVar(&a.opts.timeout, "timeout", a.opts.timeout, "HTTP client timeout (0 = no timeout)")
 
 	// Connection flags.
 	root.PersistentFlags().StringVar(&a.opts.serverURL, "server", a.opts.serverURL, "remote st8d base URL")
