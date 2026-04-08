@@ -27,11 +27,21 @@ func main() {
 	metricsRegistry := prometheus.DefaultRegisterer
 	metricsCollector := st8metrics.New(metricsRegistry)
 
-	svc := service.New(t4kv.New(*stateDir, t4kv.Config{
+	eng, err := t4kv.New(*stateDir, t4kv.Config{
 		Logger:            appLogger,
 		MetricsAddr:       *metricsListen,
 		MetricsRegisterer: metricsRegistry,
-	}))
+	})
+	if err != nil {
+		appLogger.Fatalf("failed to open storage engine: %v", err)
+	}
+	defer func() {
+		if err := eng.Close(); err != nil {
+			appLogger.Errorf("failed to close storage engine: %v", err)
+		}
+	}()
+
+	svc := service.New(eng)
 
 	var handler http.Handler = server.NewHTTP(svc, metricsCollector)
 	if *token != "" {

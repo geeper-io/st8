@@ -18,12 +18,16 @@ type LocalInstance struct {
 }
 
 func StartLocal(ctx context.Context, stateDir string) (*LocalInstance, error) {
-	engine := t4kv.New(stateDir, t4kv.Config{Logger: logging.Logger()})
-	svc := service.New(engine)
+	eng, err := t4kv.New(stateDir, t4kv.Config{Logger: logging.Logger()})
+	if err != nil {
+		return nil, err
+	}
+	svc := service.New(eng)
 	handler := NewHTTP(svc, st8metrics.New(prometheus.NewRegistry()))
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
+		_ = eng.Close()
 		return nil, err
 	}
 
@@ -39,7 +43,9 @@ func StartLocal(ctx context.Context, stateDir string) (*LocalInstance, error) {
 	return &LocalInstance{
 		BaseURL: "http://" + listener.Addr().String(),
 		closeFn: func() error {
-			return srv.Shutdown(context.Background())
+			err := srv.Shutdown(context.Background())
+			_ = eng.Close()
+			return err
 		},
 	}, nil
 }

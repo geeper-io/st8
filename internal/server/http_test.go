@@ -17,9 +17,14 @@ import (
 )
 
 func TestHTTPServerRoundTrip(t *testing.T) {
-	svc := service.New(t4kv.New(filepath.Join(t.TempDir(), ".st8d"), t4kv.Config{
+	eng, err := t4kv.New(filepath.Join(t.TempDir(), ".st8d"), t4kv.Config{
 		Logger: logging.Logger(),
-	}))
+	})
+	if err != nil {
+		t.Fatalf("failed to open engine: %v", err)
+	}
+	t.Cleanup(func() { _ = eng.Close() })
+	svc := service.New(eng)
 	handler := NewHTTP(svc, st8metrics.New(prometheus.NewRegistry()))
 	scope := service.Scope{Namespace: "payments/prod", Branch: "main"}
 

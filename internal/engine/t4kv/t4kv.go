@@ -22,34 +22,32 @@ type Config struct {
 }
 
 type Engine struct {
-	dataDir string
-	config  Config
+	node *t4.Node
 }
 
-func New(stateDir string, cfg Config) *Engine {
-	return &Engine{
-		dataDir: filepath.Join(stateDir, "engine"),
-		config:  cfg,
+func New(stateDir string, cfg Config) (*Engine, error) {
+	dataDir := filepath.Join(stateDir, "engine")
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		return nil, err
 	}
-}
-
-func (e *Engine) openNode() (*t4.Node, error) {
-	return t4.Open(t4.Config{
-		DataDir:           e.dataDir,
-		Logger:            e.config.Logger,
-		MetricsAddr:       e.config.MetricsAddr,
-		MetricsRegisterer: e.config.MetricsRegisterer,
+	node, err := t4.Open(t4.Config{
+		DataDir:           dataDir,
+		Logger:            cfg.Logger,
+		MetricsAddr:       cfg.MetricsAddr,
+		MetricsRegisterer: cfg.MetricsRegisterer,
 	})
-}
-
-func (e *Engine) Load(_ context.Context) (*model.Database, error) {
-	node, err := e.openNode()
 	if err != nil {
 		return nil, err
 	}
-	defer node.Close()
+	return &Engine{node: node}, nil
+}
 
-	kv, err := node.Get(storeKey)
+func (e *Engine) Close() error {
+	return e.node.Close()
+}
+
+func (e *Engine) Load(_ context.Context) (*model.Database, error) {
+	kv, err := e.node.Get(storeKey)
 	if err != nil {
 		return nil, err
 	}
@@ -74,19 +72,10 @@ func (e *Engine) Load(_ context.Context) (*model.Database, error) {
 }
 
 func (e *Engine) Save(ctx context.Context, db *model.Database) error {
-	if err := os.MkdirAll(e.dataDir, 0o755); err != nil {
-		return err
-	}
-	node, err := e.openNode()
-	if err != nil {
-		return err
-	}
-	defer node.Close()
-
 	data, err := json.Marshal(db)
 	if err != nil {
 		return err
 	}
-	_, err = node.Put(ctx, storeKey, data, 0)
+	_, err = e.node.Put(ctx, storeKey, data, 0)
 	return err
 }
