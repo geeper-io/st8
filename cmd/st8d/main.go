@@ -45,7 +45,7 @@ func main() {
 
 	svc := service.New(eng)
 
-	var handler http.Handler = server.NewHTTP(svc, metricsCollector, prometheus.DefaultGatherer)
+	var handler http.Handler = server.NewHTTP(svc, metricsCollector, prometheus.DefaultGatherer, appLogger)
 	if *token != "" {
 		handler = bearerAuth(*token, handler)
 		appLogger.Info("st8d bearer token authentication enabled")
