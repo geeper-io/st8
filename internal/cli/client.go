@@ -32,5 +32,9 @@ func (a *App) chooseClient(ctx context.Context) (st8client.Client, func(), error
 		return nil, nil, errors.New("no st8d server configured; use --server <url>, set server.url in config, or use --local")
 	}
 
-	return st8client.NewHTTP(url, st8client.WithToken(a.opts.token)), func() {}, nil
+	opts := []st8client.Option{st8client.WithToken(a.opts.token)}
+	if a.opts.timeout > 0 {
+		opts = append(opts, st8client.WithTimeout(a.opts.timeout))
+	}
+	return st8client.NewHTTP(url, opts...), func() {}, nil
 }

@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // HTTP is a Client that communicates with an st8d server over HTTP.
@@ -26,6 +27,12 @@ type Option func(*HTTP)
 // every request. The server must be configured with the same token.
 func WithToken(token string) Option {
 	return func(h *HTTP) { h.token = token }
+}
+
+// WithTimeout sets a timeout on the underlying HTTP client. Requests that
+// exceed the timeout are cancelled and return an error.
+func WithTimeout(d time.Duration) Option {
+	return func(h *HTTP) { h.http.Timeout = d }
 }
 
 // NewHTTP creates an HTTP client for the given st8d base URL.
