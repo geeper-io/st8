@@ -55,3 +55,9 @@ type RestoreRequest struct {
 	FromBranch     string `json:"from_branch"`
 	Message        string `json:"message"`
 }
+
+type GCRequest struct {
+	Keep int `json:"keep"`
+}
+
+type GCResponse = service.GCResult

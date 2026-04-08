@@ -47,6 +47,7 @@ func (a *App) rootCommand(ctx context.Context) *cobra.Command {
 		a.logCommand(),
 		a.branchCommand(),
 		a.restoreCommand(),
+		a.gcCommand(),
 	)
 
 	return root

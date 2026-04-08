@@ -94,7 +94,12 @@ type BranchListEntry struct {
 	Current      bool   `json:"current"`
 }
 
-// Client is the interface for talking to st8d over HTTP.
+// GCResult is returned by GC.
+type GCResult struct {
+	Pruned int `json:"pruned"`
+}
+
+
 type Client interface {
 	Apply(ctx context.Context, input ApplyInput) (*ApplyResult, error)
 	Get(ctx context.Context, scope Scope, revision int64, checkpoint string) (*GetResult, error)
@@ -105,4 +110,5 @@ type Client interface {
 	CreateBranch(ctx context.Context, scope Scope, name string, revision int64, checkpoint string) (*BranchResult, error)
 	ListBranches(ctx context.Context, scope Scope) ([]BranchListEntry, error)
 	Restore(ctx context.Context, input RestoreInput) (*ApplyResult, error)
+	GC(ctx context.Context, keep int) (*GCResult, error)
 }

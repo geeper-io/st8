@@ -82,6 +82,10 @@ type restoreRequest struct {
 	Message        string `json:"message"`
 }
 
+type gcRequest struct {
+	Keep int `json:"keep"`
+}
+
 type logResponse struct {
 	Entries []LogEntry `json:"entries"`
 }
@@ -186,6 +190,12 @@ func (c *HTTP) Restore(ctx context.Context, input RestoreInput) (*ApplyResult, e
 		FromBranch:     input.FromBranch,
 		Message:        input.Message,
 	}, &out)
+	return &out, err
+}
+
+func (c *HTTP) GC(ctx context.Context, keep int) (*GCResult, error) {
+	var out GCResult
+	err := c.doJSON(ctx, http.MethodPost, "/v1/gc", gcRequest{Keep: keep}, &out)
 	return &out, err
 }
 

@@ -216,6 +216,24 @@ func NewHTTP(svc *service.Service, metrics *st8metrics.Collector, gatherer prome
 		metrics.ObserveOperation("restore", result, time.Since(start))
 		writeResult(w, res, err)
 	}))
+	mux.HandleFunc("/v1/gc", handle("/v1/gc", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			methodNotAllowed(w)
+			return
+		}
+		var req api.GCRequest
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		start := time.Now()
+		res, err := svc.GC(r.Context(), req.Keep)
+		result := "success"
+		if err != nil {
+			result = "error"
+		}
+		metrics.ObserveOperation("gc", result, time.Since(start))
+		writeResult(w, res, err)
+	}))
 	return mux
 }
 

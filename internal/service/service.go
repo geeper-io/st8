@@ -94,10 +94,64 @@ type Document struct {
 	Content string `json:"content"`
 }
 
+type GCResult struct {
+	Pruned int `json:"pruned"`
+}
+
 func (s *Service) Apply(ctx context.Context, input ApplyInput) (*ApplyResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.applyDocuments(ctx, input.Scope, input.Documents, input.Message)
+}
+
+func (s *Service) GC(ctx context.Context, keep int) (*GCResult, error) {
+	if keep <= 0 {
+		keep = 10
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	db, err := s.engine.Load(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	protected := map[int64]struct{}{}
+	for _, ns := range db.Namespaces {
+		for _, cp := range ns.Checkpoints {
+			protected[cp.RevisionID] = struct{}{}
+		}
+		for _, branch := range ns.Branches {
+			if branch.BaseRevision > 0 {
+				protected[branch.BaseRevision] = struct{}{}
+			}
+			id := branch.HeadRevision
+			for i := 0; i < keep && id > 0; i++ {
+				protected[id] = struct{}{}
+				rev := db.Revisions[id]
+				if rev == nil {
+					break
+				}
+				id = rev.ParentID
+			}
+		}
+	}
+
+	pruned := 0
+	for id := range db.Revisions {
+		if _, ok := protected[id]; !ok {
+			delete(db.Revisions, id)
+			pruned++
+		}
+	}
+
+	if pruned == 0 {
+		return &GCResult{}, nil
+	}
+	if err := s.engine.Save(ctx, db); err != nil {
+		return nil, err
+	}
+	return &GCResult{Pruned: pruned}, nil
 }
 
 func (s *Service) Get(ctx context.Context, scope Scope, revisionID int64, checkpointName string) (*GetResult, error) {
