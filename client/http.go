@@ -15,15 +15,29 @@ import (
 // HTTP is a Client that communicates with an st8d server over HTTP.
 type HTTP struct {
 	baseURL string
+	token   string
 	http    *http.Client
 }
 
+// Option configures an HTTP client.
+type Option func(*HTTP)
+
+// WithToken sets a bearer token sent as "Authorization: Bearer <token>" on
+// every request. The server must be configured with the same token.
+func WithToken(token string) Option {
+	return func(h *HTTP) { h.token = token }
+}
+
 // NewHTTP creates an HTTP client for the given st8d base URL.
-func NewHTTP(baseURL string) *HTTP {
-	return &HTTP{
+func NewHTTP(baseURL string, opts ...Option) *HTTP {
+	h := &HTTP{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		http:    &http.Client{},
 	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 // Wire types for request bodies — private, match the server's JSON format.
@@ -199,6 +213,9 @@ func (c *HTTP) doJSON(ctx context.Context, method, path string, reqBody any, out
 	}
 	if reqBody != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
 
 	resp, err := c.http.Do(req)

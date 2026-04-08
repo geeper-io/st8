@@ -16,18 +16,25 @@ func (a *App) rootCommand(ctx context.Context) *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	root.PersistentFlags().StringVar(&a.opts.stateDir, "state-dir", ".st8", "directory for local st8 metadata")
-	root.PersistentFlags().StringVar(&a.opts.serverURL, "server", "", "remote st8d base URL")
+	// Config and auth flags — defaults come from the loaded config file.
+	root.PersistentFlags().StringVar(&a.opts.configPath, "config", a.opts.configPath, "path to config file")
+	root.PersistentFlags().StringVar(&a.opts.token, "token", a.opts.token, "bearer token for st8d authentication")
+
+	// Connection flags.
+	root.PersistentFlags().StringVar(&a.opts.serverURL, "server", a.opts.serverURL, "remote st8d base URL")
 	root.PersistentFlags().BoolVar(&a.opts.localServer, "local", false, "start a temporary local st8d and use the HTTP client path")
-	root.PersistentFlags().StringVar(&a.opts.scope.Workspace, "workspace", "default", "workspace name")
-	root.PersistentFlags().StringVar(&a.opts.scope.Environment, "env", "dev", "environment name")
-	root.PersistentFlags().StringVar(&a.opts.scope.Branch, "branch", "main", "branch name")
+	root.PersistentFlags().StringVar(&a.opts.stateDir, "state-dir", a.opts.stateDir, "directory for local st8 metadata")
+
+	// Scope flags — defaults from config, or built-in fallbacks.
+	root.PersistentFlags().StringVar(&a.opts.scope.Workspace, "workspace", a.opts.scope.Workspace, "workspace name")
+	root.PersistentFlags().StringVar(&a.opts.scope.Environment, "env", a.opts.scope.Environment, "environment name")
+	root.PersistentFlags().StringVar(&a.opts.scope.Branch, "branch", a.opts.scope.Branch, "branch name")
 
 	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		_ = ctx
 		fmt.Fprintln(a.stdout, "st8ctl safely applies, tracks, diffs, checkpoints, rolls back, and branches config state.")
 		fmt.Fprintln(a.stdout)
-		fmt.Fprintln(a.stdout, "Use --server http://host:8748 to talk to st8d, --local to boot a temporary local server, or omit both for direct embedded mode.")
+		fmt.Fprintln(a.stdout, "Use --server http://host:8748 to connect to st8d, or --local to start a temporary local instance for demos and testing.")
 		fmt.Fprintln(a.stdout)
 		_ = cmd.Usage()
 	})
