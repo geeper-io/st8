@@ -94,6 +94,18 @@ type BranchListEntry struct {
 	Current      bool   `json:"current"`
 }
 
+// LogPage is returned by Log.
+type LogPage struct {
+	Entries    []LogEntry `json:"entries"`
+	NextCursor int64      `json:"next_cursor,omitempty"`
+}
+
+// BranchPage is returned by ListBranches.
+type BranchPage struct {
+	Branches   []BranchListEntry `json:"branches"`
+	NextCursor string            `json:"next_cursor,omitempty"`
+}
+
 // GCResult is returned by GC.
 type GCResult struct {
 	Pruned int `json:"pruned"`
@@ -106,9 +118,9 @@ type Client interface {
 	DiffDocuments(ctx context.Context, scope Scope, revision int64, checkpoint string, docs []Document) (*DiffResult, error)
 	Checkpoint(ctx context.Context, scope Scope, name, description string) (*CheckpointResult, error)
 	Rollback(ctx context.Context, scope Scope, revision int64, checkpoint, message string) (*ApplyResult, error)
-	Log(ctx context.Context, scope Scope, limit int) ([]LogEntry, error)
+	Log(ctx context.Context, scope Scope, limit int, after int64) (*LogPage, error)
 	CreateBranch(ctx context.Context, scope Scope, name string, revision int64, checkpoint string) (*BranchResult, error)
-	ListBranches(ctx context.Context, scope Scope) ([]BranchListEntry, error)
+	ListBranches(ctx context.Context, scope Scope, limit int, after string) (*BranchPage, error)
 	Restore(ctx context.Context, input RestoreInput) (*ApplyResult, error)
 	GC(ctx context.Context, keep int) (*GCResult, error)
 }

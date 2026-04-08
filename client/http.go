@@ -93,14 +93,6 @@ type gcRequest struct {
 	Keep int `json:"keep"`
 }
 
-type logResponse struct {
-	Entries []LogEntry `json:"entries"`
-}
-
-type branchListResponse struct {
-	Branches []BranchListEntry `json:"branches"`
-}
-
 func (c *HTTP) Apply(ctx context.Context, input ApplyInput) (*ApplyResult, error) {
 	var out ApplyResult
 	err := c.doJSON(ctx, http.MethodPost, "/v1/apply", applyRequest{
@@ -156,16 +148,19 @@ func (c *HTTP) Rollback(ctx context.Context, scope Scope, revision int64, checkp
 	return &out, err
 }
 
-func (c *HTTP) Log(ctx context.Context, scope Scope, limit int) ([]LogEntry, error) {
+func (c *HTTP) Log(ctx context.Context, scope Scope, limit int, after int64) (*LogPage, error) {
 	q := c.scopeQuery(scope)
 	if limit > 0 {
 		q.Set("limit", strconv.Itoa(limit))
 	}
-	var out logResponse
+	if after > 0 {
+		q.Set("after", strconv.FormatInt(after, 10))
+	}
+	var out LogPage
 	if err := c.doJSON(ctx, http.MethodGet, "/v1/log?"+q.Encode(), nil, &out); err != nil {
 		return nil, err
 	}
-	return out.Entries, nil
+	return &out, nil
 }
 
 func (c *HTTP) CreateBranch(ctx context.Context, scope Scope, name string, revision int64, checkpoint string) (*BranchResult, error) {
@@ -179,13 +174,19 @@ func (c *HTTP) CreateBranch(ctx context.Context, scope Scope, name string, revis
 	return &out, err
 }
 
-func (c *HTTP) ListBranches(ctx context.Context, scope Scope) ([]BranchListEntry, error) {
+func (c *HTTP) ListBranches(ctx context.Context, scope Scope, limit int, after string) (*BranchPage, error) {
 	q := c.scopeQuery(scope)
-	var out branchListResponse
+	if limit > 0 {
+		q.Set("limit", strconv.Itoa(limit))
+	}
+	if after != "" {
+		q.Set("after", after)
+	}
+	var out BranchPage
 	if err := c.doJSON(ctx, http.MethodGet, "/v1/branches?"+q.Encode(), nil, &out); err != nil {
 		return nil, err
 	}
-	return out.Branches, nil
+	return &out, nil
 }
 
 func (c *HTTP) Restore(ctx context.Context, input RestoreInput) (*ApplyResult, error) {

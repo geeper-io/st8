@@ -162,26 +162,29 @@ func NewHTTP(svc *service.Service, metrics *st8metrics.Collector, gatherer prome
 		}
 		scope := readScope(r)
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
 		start := time.Now()
-		res, err := svc.Log(r.Context(), scope, limit)
+		res, err := svc.Log(r.Context(), scope, limit, after)
 		result := "success"
 		if err != nil {
 			result = "error"
 		}
 		metrics.ObserveOperation("log", result, time.Since(start))
-		writeResult(w, api.LogResponse{Entries: res}, err)
+		writeResult(w, res, err)
 	}))
 	mux.HandleFunc("/v1/branches", handle("/v1/branches", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
+			limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+			after := r.URL.Query().Get("after")
 			start := time.Now()
-			res, err := svc.ListBranches(r.Context(), readScope(r))
+			res, err := svc.ListBranches(r.Context(), readScope(r), limit, after)
 			result := "success"
 			if err != nil {
 				result = "error"
 			}
 			metrics.ObserveOperation("list_branches", result, time.Since(start))
-			writeResult(w, api.BranchListResponse{Branches: res}, err)
+			writeResult(w, res, err)
 		case http.MethodPost:
 			var req api.BranchCreateRequest
 			if !decodeJSON(w, r, &req) {
