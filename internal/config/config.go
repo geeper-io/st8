@@ -26,6 +26,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -52,6 +53,9 @@ type ServerConfig struct {
 	// Dir is the data directory used when URL is "local".
 	// Defaults to ~/.st8 when not set.
 	Dir string `yaml:"dir,omitempty"`
+	// Timeout is the HTTP client timeout for all requests.
+	// Zero means no timeout.
+	Timeout time.Duration `yaml:"timeout,omitempty"`
 }
 
 // DefaultsConfig holds default scope values used when the corresponding CLI
