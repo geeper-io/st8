@@ -24,6 +24,8 @@ func main() {
 	readTimeout := flag.Duration("read-timeout", 30*time.Second, "HTTP read timeout")
 	writeTimeout := flag.Duration("write-timeout", 60*time.Second, "HTTP write timeout")
 	idleTimeout := flag.Duration("idle-timeout", 120*time.Second, "HTTP idle timeout")
+	tlsCert := flag.String("tls-cert", "", "path to TLS certificate file (PEM); enables HTTPS when set together with --tls-key")
+	tlsKey := flag.String("tls-key", "", "path to TLS private key file (PEM); enables HTTPS when set together with --tls-cert")
 	flag.Parse()
 
 	appLogger := logging.Logger()
@@ -68,8 +70,15 @@ func main() {
 	}()
 
 	appLogger.Infof("st8d listening on %s", *listen)
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		appLogger.Fatal(err)
+	if *tlsCert != "" && *tlsKey != "" {
+		appLogger.Info("TLS enabled")
+		if err := srv.ListenAndServeTLS(*tlsCert, *tlsKey); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			appLogger.Fatal(err)
+		}
+	} else {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			appLogger.Fatal(err)
+		}
 	}
 }
 

@@ -121,6 +121,22 @@ Start the daemon:
 st8d --listen :8748 --state-dir .st8d
 ```
 
+Protect the API with a bearer token:
+
+```bash
+st8d --listen :8748 --state-dir .st8d --token my-secret-token
+```
+
+Enable TLS by supplying a certificate and key:
+
+```bash
+st8d --listen :8748 --state-dir .st8d \
+     --tls-cert /etc/st8d/server.crt \
+     --tls-key  /etc/st8d/server.key
+```
+
+> **Proxy alternative:** if you already have an nginx / Caddy / Envoy reverse proxy in front, simply terminate TLS there and let `st8d` listen on plain HTTP on a local port.
+
 Then point the CLI at it:
 
 ```bash
@@ -183,9 +199,10 @@ get         Read current or historical state
 diff        Compare current state to files or a prior revision
 checkpoint  Create a named checkpoint
 rollback    Roll back to a revision or checkpoint
-log         Show revision history
-branch      List branches or create a new branch
+log         Show revision history  (--after=<id> for pagination)
+branch      List branches or create a new branch  (--after=<name> for pagination)
 restore     Restore state from a revision, checkpoint, or branch
+gc          Garbage-collect old revisions  (--keep N, default 10)
 ```
 
 ## Current Notes
