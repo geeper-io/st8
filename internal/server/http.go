@@ -7,12 +7,15 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/geeper-io/st8/internal/api"
 	"github.com/geeper-io/st8/internal/service"
 	"github.com/geeper-io/st8/internal/st8metrics"
 )
 
-func NewHTTP(svc *service.Service, metrics *st8metrics.Collector) http.Handler {
+func NewHTTP(svc *service.Service, metrics *st8metrics.Collector, gatherer prometheus.Gatherer) http.Handler {
 	mux := http.NewServeMux()
 	handle := func(route string, fn http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +30,17 @@ func NewHTTP(svc *service.Service, metrics *st8metrics.Collector) http.Handler {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok\n"))
 	}))
+	mux.HandleFunc("/readyz", handle("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		if err := svc.Ready(r.Context()); err != nil {
+			http.Error(w, "storage unavailable: "+err.Error(), http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok\n"))
+	}))
+	if gatherer != nil {
+		mux.Handle("/metrics", promhttp.HandlerFor(gatherer, promhttp.HandlerOpts{}))
+	}
 	mux.HandleFunc("/v1/apply", handle("/v1/apply", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			methodNotAllowed(w)

@@ -19,7 +19,6 @@ import (
 
 func main() {
 	listen := flag.String("listen", ":8748", "listen address")
-	metricsListen := flag.String("metrics-listen", "", "listen address for embedded t4 metrics (/metrics, /healthz, /readyz)")
 	stateDir := flag.String("state-dir", ".st8d", "directory for server state")
 	token := flag.String("token", "", "require this bearer token on all requests (disabled if empty)")
 	readTimeout := flag.Duration("read-timeout", 30*time.Second, "HTTP read timeout")
@@ -33,7 +32,6 @@ func main() {
 
 	eng, err := t4kv.New(*stateDir, t4kv.Config{
 		Logger:            appLogger,
-		MetricsAddr:       *metricsListen,
 		MetricsRegisterer: metricsRegistry,
 	})
 	if err != nil {
@@ -47,7 +45,7 @@ func main() {
 
 	svc := service.New(eng)
 
-	var handler http.Handler = server.NewHTTP(svc, metricsCollector)
+	var handler http.Handler = server.NewHTTP(svc, metricsCollector, prometheus.DefaultGatherer)
 	if *token != "" {
 		handler = bearerAuth(*token, handler)
 		appLogger.Info("st8d bearer token authentication enabled")
@@ -80,7 +78,7 @@ func main() {
 func bearerAuth(token string, next http.Handler) http.Handler {
 	want := "Bearer " + token
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/healthz" {
+		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
 			next.ServeHTTP(w, r)
 			return
 		}

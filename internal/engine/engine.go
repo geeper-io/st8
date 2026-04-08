@@ -9,5 +9,6 @@ import (
 type Engine interface {
 	Load(context.Context) (*model.Database, error)
 	Save(context.Context, *model.Database) error
+	Ping(context.Context) error
 	Close() error
 }

@@ -17,7 +17,6 @@ const storeKey = "/__st8/store"
 
 type Config struct {
 	Logger            *logrus.Logger
-	MetricsAddr       string
 	MetricsRegisterer prometheus.Registerer
 }
 
@@ -33,7 +32,6 @@ func New(stateDir string, cfg Config) (*Engine, error) {
 	node, err := t4.Open(t4.Config{
 		DataDir:           dataDir,
 		Logger:            cfg.Logger,
-		MetricsAddr:       cfg.MetricsAddr,
 		MetricsRegisterer: cfg.MetricsRegisterer,
 	})
 	if err != nil {
@@ -44,6 +42,11 @@ func New(stateDir string, cfg Config) (*Engine, error) {
 
 func (e *Engine) Close() error {
 	return e.node.Close()
+}
+
+func (e *Engine) Ping(ctx context.Context) error {
+	_, err := e.node.Get(storeKey)
+	return err
 }
 
 func (e *Engine) Load(_ context.Context) (*model.Database, error) {

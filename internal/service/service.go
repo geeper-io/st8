@@ -27,6 +27,10 @@ func New(eng engine.Engine) *Service {
 	return &Service{engine: eng}
 }
 
+func (s *Service) Ready(ctx context.Context) error {
+	return s.engine.Ping(ctx)
+}
+
 type ApplyInput struct {
 	Scope     Scope
 	Documents []Document

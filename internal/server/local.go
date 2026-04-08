@@ -23,7 +23,7 @@ func StartLocal(ctx context.Context, stateDir string) (*LocalInstance, error) {
 		return nil, err
 	}
 	svc := service.New(eng)
-	handler := NewHTTP(svc, st8metrics.New(prometheus.NewRegistry()))
+	handler := NewHTTP(svc, st8metrics.New(prometheus.NewRegistry()), nil)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

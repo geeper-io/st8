@@ -44,6 +44,8 @@ func (e *Engine) Load(_ context.Context) (*model.Database, error) {
 
 func (e *Engine) Close() error { return nil }
 
+func (e *Engine) Ping(_ context.Context) error { return nil }
+
 func (e *Engine) Save(_ context.Context, db *model.Database) error {
 	if err := os.MkdirAll(filepath.Dir(e.path), 0o755); err != nil {
 		return err
