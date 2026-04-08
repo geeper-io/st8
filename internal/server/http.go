@@ -9,20 +9,31 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
 
 	"github.com/geeper-io/st8/internal/api"
 	"github.com/geeper-io/st8/internal/service"
 	"github.com/geeper-io/st8/internal/st8metrics"
 )
 
-func NewHTTP(svc *service.Service, metrics *st8metrics.Collector, gatherer prometheus.Gatherer) http.Handler {
+func NewHTTP(svc *service.Service, metrics *st8metrics.Collector, gatherer prometheus.Gatherer, logger *logrus.Logger) http.Handler {
 	mux := http.NewServeMux()
 	handle := func(route string, fn http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
 			start := time.Now()
 			fn(recorder, r)
-			metrics.ObserveHTTPRequest(route, r.Method, recorder.statusCode, time.Since(start))
+			latency := time.Since(start)
+			metrics.ObserveHTTPRequest(route, r.Method, recorder.statusCode, latency)
+			if logger != nil {
+				logger.WithFields(logrus.Fields{
+					"method":    r.Method,
+					"path":      r.URL.Path,
+					"status":    recorder.statusCode,
+					"latency_ms": latency.Milliseconds(),
+					"namespace": r.URL.Query().Get("namespace"),
+				}).Info("access")
+			}
 		}
 	}
 
