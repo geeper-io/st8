@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/geeper-io/st8/internal/engine/t4kv"
 	"github.com/geeper-io/st8/internal/logging"
@@ -21,6 +22,9 @@ func main() {
 	metricsListen := flag.String("metrics-listen", "", "listen address for embedded t4 metrics (/metrics, /healthz, /readyz)")
 	stateDir := flag.String("state-dir", ".st8d", "directory for server state")
 	token := flag.String("token", "", "require this bearer token on all requests (disabled if empty)")
+	readTimeout := flag.Duration("read-timeout", 30*time.Second, "HTTP read timeout")
+	writeTimeout := flag.Duration("write-timeout", 60*time.Second, "HTTP write timeout")
+	idleTimeout := flag.Duration("idle-timeout", 120*time.Second, "HTTP idle timeout")
 	flag.Parse()
 
 	appLogger := logging.Logger()
@@ -50,8 +54,11 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:    *listen,
-		Handler: handler,
+		Addr:         *listen,
+		Handler:      handler,
+		ReadTimeout:  *readTimeout,
+		WriteTimeout: *writeTimeout,
+		IdleTimeout:  *idleTimeout,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
