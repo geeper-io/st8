@@ -25,7 +25,7 @@ func TestHTTPServerRoundTrip(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = eng.Close() })
 	svc := service.New(eng)
-	handler := NewHTTP(svc, st8metrics.New(prometheus.NewRegistry()), nil)
+	handler := NewHTTP(svc, st8metrics.New(prometheus.NewRegistry()), nil, nil)
 	scope := service.Scope{Namespace: "payments/prod", Branch: "main"}
 
 	applyResp := performJSON(t, handler, http.MethodPost, "/v1/apply", api.ApplyRequest{
