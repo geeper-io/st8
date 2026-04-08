@@ -5,7 +5,9 @@ import (
 	"errors"
 	"io"
 
+	"github.com/geeper-io/st8/internal/logging"
 	"github.com/geeper-io/st8/internal/service"
+	"github.com/sirupsen/logrus"
 )
 
 type options struct {
@@ -19,6 +21,7 @@ type App struct {
 	opts   options
 	stdout io.Writer
 	stderr io.Writer
+	logger *logrus.Logger
 }
 
 func Run(ctx context.Context, args []string, stdout, stderr io.Writer) (int, error) {
@@ -33,6 +36,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) (int, err
 		},
 		stdout: stdout,
 		stderr: stderr,
+		logger: logging.Logger(),
 	}
 
 	root := app.rootCommand(ctx)

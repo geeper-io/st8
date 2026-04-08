@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/geeper-io/st8/internal/engine/t4kv"
+	"github.com/geeper-io/st8/internal/logging"
 	"github.com/geeper-io/st8/internal/service"
 )
 
@@ -15,7 +16,8 @@ type LocalInstance struct {
 }
 
 func StartLocal(ctx context.Context, stateDir string) (*LocalInstance, error) {
-	svc := service.New(t4kv.New(stateDir))
+	engine := t4kv.New(stateDir, t4kv.Config{Logger: logging.Logger()})
+	svc := service.New(engine)
 	handler := NewHTTP(svc)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

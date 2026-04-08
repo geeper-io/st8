@@ -3,9 +3,9 @@ module github.com/geeper-io/st8
 go 1.25.1
 
 require (
-	github.com/t4db/t4 v0.13.0
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
+	github.com/t4db/t4 v0.13.1
 )
 
 require (

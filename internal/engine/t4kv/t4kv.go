@@ -3,6 +3,7 @@ package t4kv
 import (
 	"context"
 	"encoding/json"
+	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 
@@ -13,16 +14,27 @@ import (
 
 const storeKey = "/__st8/store"
 
-type Engine struct {
-	dataDir string
+type Config struct {
+	Logger *logrus.Logger
 }
 
-func New(stateDir string) *Engine {
-	return &Engine{dataDir: filepath.Join(stateDir, "engine")}
+type Engine struct {
+	dataDir string
+	config  Config
+}
+
+func New(stateDir string, cfg Config) *Engine {
+	return &Engine{
+		dataDir: filepath.Join(stateDir, "engine"),
+		config:  cfg,
+	}
 }
 
 func (e *Engine) Load(_ context.Context) (*model.Database, error) {
-	node, err := t4.Open(t4.Config{DataDir: e.dataDir})
+	node, err := t4.Open(t4.Config{
+		DataDir: e.dataDir,
+		Logger:  e.config.Logger,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +68,10 @@ func (e *Engine) Save(ctx context.Context, db *model.Database) error {
 	if err := os.MkdirAll(e.dataDir, 0o755); err != nil {
 		return err
 	}
-	node, err := t4.Open(t4.Config{DataDir: e.dataDir})
+	node, err := t4.Open(t4.Config{
+		DataDir: e.dataDir,
+		Logger:  e.config.Logger,
+	})
 	if err != nil {
 		return err
 	}

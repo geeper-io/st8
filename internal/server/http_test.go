@@ -10,11 +10,14 @@ import (
 
 	"github.com/geeper-io/st8/internal/api"
 	"github.com/geeper-io/st8/internal/engine/t4kv"
+	"github.com/geeper-io/st8/internal/logging"
 	"github.com/geeper-io/st8/internal/service"
 )
 
 func TestHTTPServerRoundTrip(t *testing.T) {
-	svc := service.New(t4kv.New(filepath.Join(t.TempDir(), ".st8d")))
+	svc := service.New(t4kv.New(filepath.Join(t.TempDir(), ".st8d"), t4kv.Config{
+		Logger: logging.Logger(),
+	}))
 	handler := NewHTTP(svc)
 	scope := service.Scope{Workspace: "payments", Environment: "prod", Branch: "main"}
 

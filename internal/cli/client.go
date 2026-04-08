@@ -27,5 +27,7 @@ func (a *App) chooseClient(ctx context.Context) (client.Client, func(), error) {
 			_ = instance.Close()
 		}, nil
 	}
-	return client.NewLocal(service.New(t4kv.New(a.opts.stateDir))), func() {}, nil
+	engine := t4kv.New(a.opts.stateDir, t4kv.Config{Logger: a.logger})
+	svc := service.New(engine)
+	return client.NewLocal(svc), func() {}, nil
 }
