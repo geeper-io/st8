@@ -10,6 +10,7 @@ const timeFormat = "2006-01-02T15:04:05Z07:00"
 
 func (a *App) logCommand() *cobra.Command {
 	var limit int
+	var after int64
 	cmd := &cobra.Command{
 		Use:   "log",
 		Short: "Show revision history",
@@ -19,17 +20,21 @@ func (a *App) logCommand() *cobra.Command {
 				return err
 			}
 			defer cleanup()
-			entries, err := backend.Log(cmd.Context(), a.opts.scope, limit)
+			page, err := backend.Log(cmd.Context(), a.opts.scope, limit, after)
 			if err != nil {
 				return err
 			}
-			for _, entry := range entries {
+			for _, entry := range page.Entries {
 				fmt.Fprintf(a.stdout, "rev=%d parent=%d branch=%s at=%s message=%q changes=%d\n",
 					entry.ID, entry.ParentID, entry.Branch, entry.CreatedAt.Format(timeFormat), entry.Message, len(entry.Changes))
+			}
+			if page.NextCursor != 0 {
+				fmt.Fprintf(a.stdout, "next --after=%d\n", page.NextCursor)
 			}
 			return nil
 		},
 	}
 	cmd.Flags().IntVar(&limit, "limit", 20, "max revisions to show")
+	cmd.Flags().Int64Var(&after, "after", 0, "cursor: show revisions after this revision ID")
 	return cmd
 }

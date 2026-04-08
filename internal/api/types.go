@@ -33,9 +33,7 @@ type RollbackRequest struct {
 	Message        string `json:"message"`
 }
 
-type LogResponse struct {
-	Entries []service.LogEntry `json:"entries"`
-}
+type LogResponse = service.LogPage
 
 type BranchCreateRequest struct {
 	Scope          Scope  `json:"scope"`
@@ -44,9 +42,7 @@ type BranchCreateRequest struct {
 	FromCheckpoint string `json:"from_checkpoint"`
 }
 
-type BranchListResponse struct {
-	Branches []service.BranchListEntry `json:"branches"`
-}
+type BranchListResponse = service.BranchPage
 
 type RestoreRequest struct {
 	Scope          Scope  `json:"scope"`

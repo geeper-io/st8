@@ -7,6 +7,8 @@ import (
 )
 
 func (a *App) branchCommand() *cobra.Command {
+	var limit int
+	var after string
 	cmd := &cobra.Command{
 		Use:   "branch",
 		Short: "List branches or create a new branch",
@@ -16,20 +18,25 @@ func (a *App) branchCommand() *cobra.Command {
 				return err
 			}
 			defer cleanup()
-			branches, err := backend.ListBranches(cmd.Context(), a.opts.scope)
+			page, err := backend.ListBranches(cmd.Context(), a.opts.scope, limit, after)
 			if err != nil {
 				return err
 			}
-			for _, branch := range branches {
+			for _, branch := range page.Branches {
 				current := ""
 				if branch.Current {
 					current = " *"
 				}
 				fmt.Fprintf(a.stdout, "%s head=%d base=%d%s\n", branch.Name, branch.HeadRevision, branch.BaseRevision, current)
 			}
+			if page.NextCursor != "" {
+				fmt.Fprintf(a.stdout, "next --after=%s\n", page.NextCursor)
+			}
 			return nil
 		},
 	}
+	cmd.Flags().IntVar(&limit, "limit", 50, "max branches to show")
+	cmd.Flags().StringVar(&after, "after", "", "cursor: show branches after this name")
 	cmd.AddCommand(a.branchCreateCommand())
 	return cmd
 }

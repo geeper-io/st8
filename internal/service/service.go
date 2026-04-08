@@ -94,6 +94,16 @@ type Document struct {
 	Content string `json:"content"`
 }
 
+type LogPage struct {
+	Entries    []LogEntry `json:"entries"`
+	NextCursor int64      `json:"next_cursor,omitempty"`
+}
+
+type BranchPage struct {
+	Branches   []BranchListEntry `json:"branches"`
+	NextCursor string            `json:"next_cursor,omitempty"`
+}
+
 type GCResult struct {
 	Pruned int `json:"pruned"`
 }
@@ -272,7 +282,7 @@ func (s *Service) restore(ctx context.Context, input RestoreInput) (*ApplyResult
 	return &ApplyResult{Revision: revision.ID, Changes: changes}, nil
 }
 
-func (s *Service) Log(ctx context.Context, scope Scope, limit int) ([]LogEntry, error) {
+func (s *Service) Log(ctx context.Context, scope Scope, limit int, after int64) (*LogPage, error) {
 	db, err := s.engine.Load(ctx)
 	if err != nil {
 		return nil, err
@@ -283,8 +293,18 @@ func (s *Service) Log(ctx context.Context, scope Scope, limit int) ([]LogEntry, 
 	if limit <= 0 {
 		limit = 20
 	}
+
+	startID := branch.HeadRevision
+	if after > 0 {
+		cur := db.Revisions[after]
+		if cur == nil {
+			return nil, fmt.Errorf("cursor revision %d not found", after)
+		}
+		startID = cur.ParentID
+	}
+
 	var out []LogEntry
-	for revID := branch.HeadRevision; revID > 0 && len(out) < limit; {
+	for revID := startID; revID > 0 && len(out) < limit; {
 		rev := db.Revisions[revID]
 		if rev == nil {
 			break
@@ -299,7 +319,12 @@ func (s *Service) Log(ctx context.Context, scope Scope, limit int) ([]LogEntry, 
 		})
 		revID = rev.ParentID
 	}
-	return out, nil
+
+	var nextCursor int64
+	if len(out) == limit && out[len(out)-1].ParentID > 0 {
+		nextCursor = out[len(out)-1].ID
+	}
+	return &LogPage{Entries: out, NextCursor: nextCursor}, nil
 }
 
 func (s *Service) CreateBranch(ctx context.Context, scope Scope, name string, fromRevision int64, fromCheckpoint string) (*BranchResult, error) {
@@ -332,7 +357,7 @@ func (s *Service) CreateBranch(ctx context.Context, scope Scope, name string, fr
 	return &BranchResult{Name: name, BaseRevision: base.ID, HeadRevision: base.ID}, nil
 }
 
-func (s *Service) ListBranches(ctx context.Context, scope Scope) ([]BranchListEntry, error) {
+func (s *Service) ListBranches(ctx context.Context, scope Scope, limit int, after string) (*BranchPage, error) {
 	db, err := s.engine.Load(ctx)
 	if err != nil {
 		return nil, err
@@ -344,6 +369,27 @@ func (s *Service) ListBranches(ctx context.Context, scope Scope) ([]BranchListEn
 		names = append(names, name)
 	}
 	slices.Sort(names)
+
+	start := 0
+	if after != "" {
+		for i, name := range names {
+			if name == after {
+				start = i + 1
+				break
+			}
+		}
+	}
+	names = names[start:]
+
+	if limit <= 0 {
+		limit = 50
+	}
+	var nextCursor string
+	if len(names) > limit {
+		nextCursor = names[limit-1]
+		names = names[:limit]
+	}
+
 	out := make([]BranchListEntry, 0, len(names))
 	for _, name := range names {
 		branch := ns.Branches[name]
@@ -354,7 +400,7 @@ func (s *Service) ListBranches(ctx context.Context, scope Scope) ([]BranchListEn
 			Current:      name == scope.Branch,
 		})
 	}
-	return out, nil
+	return &BranchPage{Branches: out, NextCursor: nextCursor}, nil
 }
 
 func normalizeScope(scope Scope) Scope {
