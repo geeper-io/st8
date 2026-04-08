@@ -12,13 +12,15 @@ import (
 	"github.com/geeper-io/st8/internal/engine/t4kv"
 	"github.com/geeper-io/st8/internal/logging"
 	"github.com/geeper-io/st8/internal/service"
+	"github.com/geeper-io/st8/internal/st8metrics"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func TestHTTPServerRoundTrip(t *testing.T) {
 	svc := service.New(t4kv.New(filepath.Join(t.TempDir(), ".st8d"), t4kv.Config{
 		Logger: logging.Logger(),
 	}))
-	handler := NewHTTP(svc)
+	handler := NewHTTP(svc, st8metrics.New(prometheus.NewRegistry()))
 	scope := service.Scope{Workspace: "payments", Environment: "prod", Branch: "main"}
 
 	applyResp := performJSON(t, handler, http.MethodPost, "/v1/apply", api.ApplyRequest{

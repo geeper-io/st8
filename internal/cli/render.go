@@ -6,10 +6,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/geeper-io/st8/internal/model"
+	st8client "github.com/geeper-io/st8/client"
 )
 
-func renderChange(w io.Writer, change model.Change) {
+func renderChange(w io.Writer, change st8client.Change) {
 	fmt.Fprintf(w, "\n%s %s\n", strings.ToUpper(change.Type), change.Key)
 	if change.Type != "create" {
 		fmt.Fprintln(w, "--- before")

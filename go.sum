@@ -129,6 +129,8 @@ github.com/t4db/t4 v0.13.1-0.20260408092828-8b31bdd4aa31 h1:Eh4gmyksq89dRr0VvU/a
 github.com/t4db/t4 v0.13.1-0.20260408092828-8b31bdd4aa31/go.mod h1:LoUb4MVgsFQOEuv+wWmiWEeFfOfdw6CRrTU1KWq8a8s=
 github.com/t4db/t4 v0.13.1 h1:959RAnZMX/q7XW0rp3VZiOkCBqDfZamoW1N7ZVAB4to=
 github.com/t4db/t4 v0.13.1/go.mod h1:LoUb4MVgsFQOEuv+wWmiWEeFfOfdw6CRrTU1KWq8a8s=
+github.com/t4db/t4 v0.13.2 h1:2PwWLRqiRJ3+gyTkMdSJZCfOk4ImdfPug6eRmrPehmg=
+github.com/t4db/t4 v0.13.2/go.mod h1:LoUb4MVgsFQOEuv+wWmiWEeFfOfdw6CRrTU1KWq8a8s=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=

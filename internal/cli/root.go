@@ -9,9 +9,9 @@ import (
 
 func (a *App) rootCommand(ctx context.Context) *cobra.Command {
 	root := &cobra.Command{
-		Use:           "st8",
+		Use:           "st8ctl",
 		Short:         "Safely apply, track, and roll back config state",
-		Long:          "st8 safely applies, tracks, diffs, checkpoints, rolls back, and branches config state.",
+		Long:          "st8ctl safely applies, tracks, diffs, checkpoints, rolls back, and branches config state.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -25,7 +25,7 @@ func (a *App) rootCommand(ctx context.Context) *cobra.Command {
 
 	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		_ = ctx
-		fmt.Fprintln(a.stdout, "st8 safely applies, tracks, diffs, checkpoints, rolls back, and branches config state.")
+		fmt.Fprintln(a.stdout, "st8ctl safely applies, tracks, diffs, checkpoints, rolls back, and branches config state.")
 		fmt.Fprintln(a.stdout)
 		fmt.Fprintln(a.stdout, "Use --server http://host:8748 to talk to st8d, --local to boot a temporary local server, or omit both for direct embedded mode.")
 		fmt.Fprintln(a.stdout)

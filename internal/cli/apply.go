@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	st8client "github.com/geeper-io/st8/client"
 	"github.com/spf13/cobra"
-
-	"github.com/geeper-io/st8/internal/service"
 )
 
 func (a *App) applyCommand() *cobra.Command {
@@ -25,7 +24,7 @@ func (a *App) applyCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			res, err := backend.Apply(cmd.Context(), service.ApplyInput{
+			res, err := backend.Apply(cmd.Context(), st8client.ApplyInput{
 				Scope:     a.opts.scope,
 				Documents: docs,
 				Message:   message,

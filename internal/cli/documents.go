@@ -1,21 +1,18 @@
 package cli
 
 import (
+	st8client "github.com/geeper-io/st8/client"
 	"github.com/geeper-io/st8/internal/document"
-	"github.com/geeper-io/st8/internal/service"
 )
 
-func loadDocuments(paths []string) ([]service.Document, error) {
+func loadDocuments(paths []string) ([]st8client.Document, error) {
 	items, err := document.Load(paths)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]service.Document, 0, len(items))
-	for _, item := range items {
-		out = append(out, service.Document{
-			Key:     item.Key,
-			Content: item.Content,
-		})
+	out := make([]st8client.Document, len(items))
+	for i, item := range items {
+		out[i] = st8client.Document{Key: item.Key, Content: item.Content}
 	}
 	return out, nil
 }

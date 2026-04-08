@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/geeper-io/st8/internal/engine"
@@ -13,13 +14,14 @@ import (
 )
 
 type Scope struct {
-	Workspace   string
-	Environment string
-	Branch      string
+	Workspace   string `json:"workspace"`
+	Environment string `json:"environment"`
+	Branch      string `json:"branch"`
 }
 
 type Service struct {
 	engine engine.Engine
+	mu     sync.Mutex
 }
 
 func New(eng engine.Engine) *Service {
@@ -33,40 +35,40 @@ type ApplyInput struct {
 }
 
 type ApplyResult struct {
-	Revision int64
-	Changes  []model.Change
-	Noop     bool
+	Revision int64          `json:"revision"`
+	Changes  []model.Change `json:"changes"`
+	Noop     bool           `json:"noop"`
 }
 
 type GetResult struct {
-	Revision int64
-	Objects  map[string]string
+	Revision int64             `json:"revision"`
+	Objects  map[string]string `json:"objects"`
 }
 
 type CheckpointResult struct {
-	Name       string
-	RevisionID int64
+	Name       string `json:"name"`
+	RevisionID int64  `json:"revision_id"`
 }
 
 type BranchResult struct {
-	Name         string
-	BaseRevision int64
-	HeadRevision int64
+	Name         string `json:"name"`
+	BaseRevision int64  `json:"base_revision"`
+	HeadRevision int64  `json:"head_revision"`
 }
 
 type DiffResult struct {
-	FromRevision int64
-	ToRevision   int64
-	Changes      []model.Change
+	FromRevision int64          `json:"from_revision"`
+	ToRevision   int64          `json:"to_revision"`
+	Changes      []model.Change `json:"changes"`
 }
 
 type LogEntry struct {
-	ID        int64
-	ParentID  int64
-	Message   string
-	CreatedAt time.Time
-	Branch    string
-	Changes   []model.Change
+	ID        int64          `json:"id"`
+	ParentID  int64          `json:"parent_id"`
+	Message   string         `json:"message"`
+	CreatedAt time.Time      `json:"created_at"`
+	Branch    string         `json:"branch"`
+	Changes   []model.Change `json:"changes"`
 }
 
 type RestoreInput struct {
@@ -78,10 +80,10 @@ type RestoreInput struct {
 }
 
 type BranchListEntry struct {
-	Name         string
-	BaseRevision int64
-	HeadRevision int64
-	Current      bool
+	Name         string `json:"name"`
+	BaseRevision int64  `json:"base_revision"`
+	HeadRevision int64  `json:"head_revision"`
+	Current      bool   `json:"current"`
 }
 
 type Document struct {
@@ -90,6 +92,8 @@ type Document struct {
 }
 
 func (s *Service) Apply(ctx context.Context, input ApplyInput) (*ApplyResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.applyDocuments(ctx, input.Scope, input.Documents, input.Message)
 }
 
@@ -143,6 +147,8 @@ func (s *Service) DiffDocuments(ctx context.Context, scope Scope, revisionID int
 }
 
 func (s *Service) Checkpoint(ctx context.Context, scope Scope, name, description string) (*CheckpointResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if strings.TrimSpace(name) == "" {
 		return nil, errors.New("checkpoint name is required")
 	}
@@ -152,7 +158,7 @@ func (s *Service) Checkpoint(ctx context.Context, scope Scope, name, description
 	}
 	scope = normalizeScope(scope)
 	env := ensureEnvironment(db, scope)
-	branch := ensureBranch(db, env, scope.Branch)
+	branch := ensureBranch(env, scope.Branch)
 	env.Checkpoints[name] = &model.Checkpoint{
 		Name:        name,
 		Workspace:   scope.Workspace,
@@ -169,6 +175,8 @@ func (s *Service) Checkpoint(ctx context.Context, scope Scope, name, description
 }
 
 func (s *Service) Rollback(ctx context.Context, scope Scope, revisionID int64, checkpointName, message string) (*ApplyResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.restore(ctx, RestoreInput{
 		Scope:          scope,
 		FromRevision:   revisionID,
@@ -178,6 +186,8 @@ func (s *Service) Rollback(ctx context.Context, scope Scope, revisionID int64, c
 }
 
 func (s *Service) Restore(ctx context.Context, input RestoreInput) (*ApplyResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.restore(ctx, input)
 }
 
@@ -188,7 +198,7 @@ func (s *Service) restore(ctx context.Context, input RestoreInput) (*ApplyResult
 	}
 	scope := normalizeScope(input.Scope)
 	env := ensureEnvironment(db, scope)
-	branch := ensureBranch(db, env, scope.Branch)
+	branch := ensureBranch(env, scope.Branch)
 	current := snapshotForRevision(db, branch.HeadRevision)
 	target, err := resolveRevision(db, scope, input.FromRevision, input.FromCheckpoint, input.FromBranch)
 	if err != nil {
@@ -213,7 +223,7 @@ func (s *Service) Log(ctx context.Context, scope Scope, limit int) ([]LogEntry, 
 	}
 	scope = normalizeScope(scope)
 	env := ensureEnvironment(db, scope)
-	branch := ensureBranch(db, env, scope.Branch)
+	branch := ensureBranch(env, scope.Branch)
 	if limit <= 0 {
 		limit = 20
 	}
@@ -237,6 +247,8 @@ func (s *Service) Log(ctx context.Context, scope Scope, limit int) ([]LogEntry, 
 }
 
 func (s *Service) CreateBranch(ctx context.Context, scope Scope, name string, fromRevision int64, fromCheckpoint string) (*BranchResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if strings.TrimSpace(name) == "" {
 		return nil, errors.New("branch name is required")
 	}
@@ -326,7 +338,7 @@ func ensureEnvironment(db *model.Database, scope Scope) *model.EnvironmentState 
 	return env
 }
 
-func ensureBranch(db *model.Database, env *model.EnvironmentState, name string) *model.BranchState {
+func ensureBranch(env *model.EnvironmentState, name string) *model.BranchState {
 	if strings.TrimSpace(name) == "" {
 		name = env.ActiveBranch
 	}
@@ -341,7 +353,6 @@ func ensureBranch(db *model.Database, env *model.EnvironmentState, name string) 
 	if env.ActiveBranch == "" {
 		env.ActiveBranch = name
 	}
-	_ = db
 	return branch
 }
 
@@ -406,7 +417,7 @@ func resolveRevision(db *model.Database, scope Scope, revisionID int64, checkpoi
 		}
 		return rev, nil
 	default:
-		branch := ensureBranch(db, env, scope.Branch)
+		branch := ensureBranch(env, scope.Branch)
 		if branch.HeadRevision == 0 {
 			return &model.Revision{Objects: map[string]string{}}, nil
 		}
@@ -472,7 +483,7 @@ func (s *Service) applyDocuments(ctx context.Context, scope Scope, documents []D
 	}
 	scope = normalizeScope(scope)
 	env := ensureEnvironment(db, scope)
-	branch := ensureBranch(db, env, scope.Branch)
+	branch := ensureBranch(env, scope.Branch)
 	current := snapshotForRevision(db, branch.HeadRevision)
 	next := cloneObjects(current)
 

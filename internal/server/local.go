@@ -8,6 +8,8 @@ import (
 	"github.com/geeper-io/st8/internal/engine/t4kv"
 	"github.com/geeper-io/st8/internal/logging"
 	"github.com/geeper-io/st8/internal/service"
+	"github.com/geeper-io/st8/internal/st8metrics"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type LocalInstance struct {
@@ -18,7 +20,7 @@ type LocalInstance struct {
 func StartLocal(ctx context.Context, stateDir string) (*LocalInstance, error) {
 	engine := t4kv.New(stateDir, t4kv.Config{Logger: logging.Logger()})
 	svc := service.New(engine)
-	handler := NewHTTP(svc)
+	handler := NewHTTP(svc, st8metrics.New(prometheus.NewRegistry()))
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

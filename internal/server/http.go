@@ -5,18 +5,29 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/geeper-io/st8/internal/api"
 	"github.com/geeper-io/st8/internal/service"
+	"github.com/geeper-io/st8/internal/st8metrics"
 )
 
-func NewHTTP(svc *service.Service) http.Handler {
+func NewHTTP(svc *service.Service, metrics *st8metrics.Collector) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+	handle := func(route string, fn http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+			start := time.Now()
+			fn(recorder, r)
+			metrics.ObserveHTTPRequest(route, r.Method, recorder.statusCode, time.Since(start))
+		}
+	}
+
+	mux.HandleFunc("/healthz", handle("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok\n"))
-	})
-	mux.HandleFunc("/v1/apply", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("/v1/apply", handle("/v1/apply", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			methodNotAllowed(w)
 			return
@@ -25,14 +36,24 @@ func NewHTTP(svc *service.Service) http.Handler {
 		if !decodeJSON(w, r, &req) {
 			return
 		}
+		start := time.Now()
 		res, err := svc.Apply(r.Context(), service.ApplyInput{
 			Scope:     req.Scope,
 			Documents: req.Documents,
 			Message:   req.Message,
 		})
+		result := "success"
+		if err != nil {
+			result = "error"
+		} else if res.Noop {
+			result = "noop"
+		} else {
+			metrics.AddChangedDocuments("apply", len(res.Changes))
+		}
+		metrics.ObserveOperation("apply", result, time.Since(start))
 		writeResult(w, res, err)
-	})
-	mux.HandleFunc("/v1/state", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("/v1/state", handle("/v1/state", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			methodNotAllowed(w)
 			return
@@ -40,10 +61,16 @@ func NewHTTP(svc *service.Service) http.Handler {
 		scope := readScope(r)
 		revision, _ := strconv.ParseInt(r.URL.Query().Get("revision"), 10, 64)
 		checkpoint := r.URL.Query().Get("checkpoint")
+		start := time.Now()
 		res, err := svc.Get(r.Context(), scope, revision, checkpoint)
+		result := "success"
+		if err != nil {
+			result = "error"
+		}
+		metrics.ObserveOperation("get", result, time.Since(start))
 		writeResult(w, res, err)
-	})
-	mux.HandleFunc("/v1/diff", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("/v1/diff", handle("/v1/diff", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			methodNotAllowed(w)
 			return
@@ -52,10 +79,18 @@ func NewHTTP(svc *service.Service) http.Handler {
 		if !decodeJSON(w, r, &req) {
 			return
 		}
+		start := time.Now()
 		res, err := svc.DiffDocuments(r.Context(), req.Scope, req.RevisionID, req.CheckpointName, req.Documents)
+		result := "success"
+		if err != nil {
+			result = "error"
+		} else {
+			metrics.AddChangedDocuments("diff", len(res.Changes))
+		}
+		metrics.ObserveOperation("diff", result, time.Since(start))
 		writeResult(w, res, err)
-	})
-	mux.HandleFunc("/v1/checkpoints", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("/v1/checkpoints", handle("/v1/checkpoints", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			methodNotAllowed(w)
 			return
@@ -64,10 +99,16 @@ func NewHTTP(svc *service.Service) http.Handler {
 		if !decodeJSON(w, r, &req) {
 			return
 		}
+		start := time.Now()
 		res, err := svc.Checkpoint(r.Context(), req.Scope, req.Name, req.Description)
+		result := "success"
+		if err != nil {
+			result = "error"
+		}
+		metrics.ObserveOperation("checkpoint", result, time.Since(start))
 		writeResult(w, res, err)
-	})
-	mux.HandleFunc("/v1/rollback", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("/v1/rollback", handle("/v1/rollback", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			methodNotAllowed(w)
 			return
@@ -76,36 +117,64 @@ func NewHTTP(svc *service.Service) http.Handler {
 		if !decodeJSON(w, r, &req) {
 			return
 		}
+		start := time.Now()
 		res, err := svc.Rollback(r.Context(), req.Scope, req.RevisionID, req.CheckpointName, req.Message)
+		result := "success"
+		if err != nil {
+			result = "error"
+		} else if res.Noop {
+			result = "noop"
+		} else {
+			metrics.AddChangedDocuments("rollback", len(res.Changes))
+		}
+		metrics.ObserveOperation("rollback", result, time.Since(start))
 		writeResult(w, res, err)
-	})
-	mux.HandleFunc("/v1/log", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("/v1/log", handle("/v1/log", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			methodNotAllowed(w)
 			return
 		}
 		scope := readScope(r)
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		start := time.Now()
 		res, err := svc.Log(r.Context(), scope, limit)
+		result := "success"
+		if err != nil {
+			result = "error"
+		}
+		metrics.ObserveOperation("log", result, time.Since(start))
 		writeResult(w, api.LogResponse{Entries: res}, err)
-	})
-	mux.HandleFunc("/v1/branches", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("/v1/branches", handle("/v1/branches", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
+			start := time.Now()
 			res, err := svc.ListBranches(r.Context(), readScope(r))
+			result := "success"
+			if err != nil {
+				result = "error"
+			}
+			metrics.ObserveOperation("list_branches", result, time.Since(start))
 			writeResult(w, api.BranchListResponse{Branches: res}, err)
 		case http.MethodPost:
 			var req api.BranchCreateRequest
 			if !decodeJSON(w, r, &req) {
 				return
 			}
+			start := time.Now()
 			res, err := svc.CreateBranch(r.Context(), req.Scope, req.Name, req.FromRevision, req.FromCheckpoint)
+			result := "success"
+			if err != nil {
+				result = "error"
+			}
+			metrics.ObserveOperation("create_branch", result, time.Since(start))
 			writeResult(w, res, err)
 		default:
 			methodNotAllowed(w)
 		}
-	})
-	mux.HandleFunc("/v1/restore", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("/v1/restore", handle("/v1/restore", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			methodNotAllowed(w)
 			return
@@ -114,6 +183,7 @@ func NewHTTP(svc *service.Service) http.Handler {
 		if !decodeJSON(w, r, &req) {
 			return
 		}
+		start := time.Now()
 		res, err := svc.Restore(r.Context(), service.RestoreInput{
 			Scope:          req.Scope,
 			FromRevision:   req.FromRevision,
@@ -121,9 +191,28 @@ func NewHTTP(svc *service.Service) http.Handler {
 			FromBranch:     req.FromBranch,
 			Message:        req.Message,
 		})
+		result := "success"
+		if err != nil {
+			result = "error"
+		} else if res.Noop {
+			result = "noop"
+		} else {
+			metrics.AddChangedDocuments("restore", len(res.Changes))
+		}
+		metrics.ObserveOperation("restore", result, time.Since(start))
 		writeResult(w, res, err)
-	})
+	}))
 	return mux
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (w *statusRecorder) WriteHeader(statusCode int) {
+	w.statusCode = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, out any) bool {

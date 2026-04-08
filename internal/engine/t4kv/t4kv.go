@@ -3,10 +3,11 @@ package t4kv
 import (
 	"context"
 	"encoding/json"
-	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 	"github.com/t4db/t4"
 
 	"github.com/geeper-io/st8/internal/model"
@@ -15,7 +16,9 @@ import (
 const storeKey = "/__st8/store"
 
 type Config struct {
-	Logger *logrus.Logger
+	Logger            *logrus.Logger
+	MetricsAddr       string
+	MetricsRegisterer prometheus.Registerer
 }
 
 type Engine struct {
@@ -30,11 +33,17 @@ func New(stateDir string, cfg Config) *Engine {
 	}
 }
 
-func (e *Engine) Load(_ context.Context) (*model.Database, error) {
-	node, err := t4.Open(t4.Config{
-		DataDir: e.dataDir,
-		Logger:  e.config.Logger,
+func (e *Engine) openNode() (*t4.Node, error) {
+	return t4.Open(t4.Config{
+		DataDir:           e.dataDir,
+		Logger:            e.config.Logger,
+		MetricsAddr:       e.config.MetricsAddr,
+		MetricsRegisterer: e.config.MetricsRegisterer,
 	})
+}
+
+func (e *Engine) Load(_ context.Context) (*model.Database, error) {
+	node, err := e.openNode()
 	if err != nil {
 		return nil, err
 	}
@@ -68,10 +77,7 @@ func (e *Engine) Save(ctx context.Context, db *model.Database) error {
 	if err := os.MkdirAll(e.dataDir, 0o755); err != nil {
 		return err
 	}
-	node, err := t4.Open(t4.Config{
-		DataDir: e.dataDir,
-		Logger:  e.config.Logger,
-	})
+	node, err := e.openNode()
 	if err != nil {
 		return err
 	}

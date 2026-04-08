@@ -5,8 +5,8 @@ import (
 	"errors"
 	"io"
 
+	st8client "github.com/geeper-io/st8/client"
 	"github.com/geeper-io/st8/internal/logging"
-	"github.com/geeper-io/st8/internal/service"
 	"github.com/sirupsen/logrus"
 )
 
@@ -14,7 +14,7 @@ type options struct {
 	stateDir    string
 	serverURL   string
 	localServer bool
-	scope       service.Scope
+	scope       st8client.Scope
 }
 
 type App struct {
@@ -28,7 +28,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) (int, err
 	app := &App{
 		opts: options{
 			stateDir: ".st8",
-			scope: service.Scope{
+			scope: st8client.Scope{
 				Workspace:   "default",
 				Environment: "dev",
 				Branch:      "main",

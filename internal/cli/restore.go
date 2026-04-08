@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	st8client "github.com/geeper-io/st8/client"
 	"github.com/spf13/cobra"
-
-	"github.com/geeper-io/st8/internal/service"
 )
 
 func (a *App) restoreCommand() *cobra.Command {
@@ -23,7 +22,7 @@ func (a *App) restoreCommand() *cobra.Command {
 				return err
 			}
 			defer cleanup()
-			res, err := backend.Restore(cmd.Context(), service.RestoreInput{
+			res, err := backend.Restore(cmd.Context(), st8client.RestoreInput{
 				Scope:          a.opts.scope,
 				FromRevision:   revision,
 				FromCheckpoint: checkpoint,
