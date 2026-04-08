@@ -7,11 +7,10 @@ import (
 	"time"
 )
 
-// Scope identifies which workspace/environment/branch to operate on.
+// Scope identifies which namespace and branch to operate on.
 type Scope struct {
-	Workspace   string `json:"workspace"`
-	Environment string `json:"environment"`
-	Branch      string `json:"branch"`
+	Namespace string `json:"namespace"`
+	Branch    string `json:"branch"`
 }
 
 // Document is a key/content pair applied to state.
@@ -95,7 +94,7 @@ type BranchListEntry struct {
 	Current      bool   `json:"current"`
 }
 
-// Client is the interface for talking to st8d, either over HTTP or embedded.
+// Client is the interface for talking to st8d over HTTP.
 type Client interface {
 	Apply(ctx context.Context, input ApplyInput) (*ApplyResult, error)
 	Get(ctx context.Context, scope Scope, revision int64, checkpoint string) (*GetResult, error)

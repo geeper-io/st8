@@ -14,9 +14,8 @@ import (
 )
 
 type Scope struct {
-	Workspace   string `json:"workspace"`
-	Environment string `json:"environment"`
-	Branch      string `json:"branch"`
+	Namespace string `json:"namespace"`
+	Branch    string `json:"branch"`
 }
 
 type Service struct {
@@ -157,12 +156,11 @@ func (s *Service) Checkpoint(ctx context.Context, scope Scope, name, description
 		return nil, err
 	}
 	scope = normalizeScope(scope)
-	env := ensureEnvironment(db, scope)
-	branch := ensureBranch(env, scope.Branch)
-	env.Checkpoints[name] = &model.Checkpoint{
+	ns := ensureNamespace(db, scope)
+	branch := ensureBranch(ns, scope.Branch)
+	ns.Checkpoints[name] = &model.Checkpoint{
 		Name:        name,
-		Workspace:   scope.Workspace,
-		Environment: scope.Environment,
+		Namespace:   scope.Namespace,
 		Branch:      scope.Branch,
 		RevisionID:  branch.HeadRevision,
 		CreatedAt:   time.Now().UTC(),
@@ -197,8 +195,8 @@ func (s *Service) restore(ctx context.Context, input RestoreInput) (*ApplyResult
 		return nil, err
 	}
 	scope := normalizeScope(input.Scope)
-	env := ensureEnvironment(db, scope)
-	branch := ensureBranch(env, scope.Branch)
+	ns := ensureNamespace(db, scope)
+	branch := ensureBranch(ns, scope.Branch)
 	current := snapshotForRevision(db, branch.HeadRevision)
 	target, err := resolveRevision(db, scope, input.FromRevision, input.FromCheckpoint, input.FromBranch)
 	if err != nil {
@@ -222,8 +220,8 @@ func (s *Service) Log(ctx context.Context, scope Scope, limit int) ([]LogEntry, 
 		return nil, err
 	}
 	scope = normalizeScope(scope)
-	env := ensureEnvironment(db, scope)
-	branch := ensureBranch(env, scope.Branch)
+	ns := ensureNamespace(db, scope)
+	branch := ensureBranch(ns, scope.Branch)
 	if limit <= 0 {
 		limit = 20
 	}
@@ -257,15 +255,15 @@ func (s *Service) CreateBranch(ctx context.Context, scope Scope, name string, fr
 		return nil, err
 	}
 	scope = normalizeScope(scope)
-	env := ensureEnvironment(db, scope)
-	if _, exists := env.Branches[name]; exists {
+	ns := ensureNamespace(db, scope)
+	if _, exists := ns.Branches[name]; exists {
 		return nil, fmt.Errorf("branch %q already exists", name)
 	}
 	base, err := resolveRevision(db, scope, fromRevision, fromCheckpoint, "")
 	if err != nil {
 		return nil, err
 	}
-	env.Branches[name] = &model.BranchState{
+	ns.Branches[name] = &model.BranchState{
 		Name:         name,
 		BaseRevision: base.ID,
 		HeadRevision: base.ID,
@@ -282,15 +280,15 @@ func (s *Service) ListBranches(ctx context.Context, scope Scope) ([]BranchListEn
 		return nil, err
 	}
 	scope = normalizeScope(scope)
-	env := ensureEnvironment(db, scope)
+	ns := ensureNamespace(db, scope)
 	var names []string
-	for name := range env.Branches {
+	for name := range ns.Branches {
 		names = append(names, name)
 	}
 	slices.Sort(names)
 	out := make([]BranchListEntry, 0, len(names))
 	for _, name := range names {
-		branch := env.Branches[name]
+		branch := ns.Branches[name]
 		out = append(out, BranchListEntry{
 			Name:         branch.Name,
 			BaseRevision: branch.BaseRevision,
@@ -302,11 +300,8 @@ func (s *Service) ListBranches(ctx context.Context, scope Scope) ([]BranchListEn
 }
 
 func normalizeScope(scope Scope) Scope {
-	if strings.TrimSpace(scope.Workspace) == "" {
-		scope.Workspace = "default"
-	}
-	if strings.TrimSpace(scope.Environment) == "" {
-		scope.Environment = "dev"
+	if strings.TrimSpace(scope.Namespace) == "" {
+		scope.Namespace = "default"
 	}
 	if strings.TrimSpace(scope.Branch) == "" {
 		scope.Branch = "main"
@@ -314,44 +309,39 @@ func normalizeScope(scope Scope) Scope {
 	return scope
 }
 
-func ensureEnvironment(db *model.Database, scope Scope) *model.EnvironmentState {
-	ws := db.Workspaces[scope.Workspace]
-	if ws == nil {
-		ws = &model.WorkspaceState{Environments: map[string]*model.EnvironmentState{}}
-		db.Workspaces[scope.Workspace] = ws
-	}
-	env := ws.Environments[scope.Environment]
-	if env == nil {
-		env = &model.EnvironmentState{
+func ensureNamespace(db *model.Database, scope Scope) *model.NamespaceState {
+	ns := db.Namespaces[scope.Namespace]
+	if ns == nil {
+		ns = &model.NamespaceState{
 			ActiveBranch: "main",
 			Branches:     map[string]*model.BranchState{},
 			Checkpoints:  map[string]*model.Checkpoint{},
 		}
-		ws.Environments[scope.Environment] = env
+		db.Namespaces[scope.Namespace] = ns
 	}
-	if env.Branches == nil {
-		env.Branches = map[string]*model.BranchState{}
+	if ns.Branches == nil {
+		ns.Branches = map[string]*model.BranchState{}
 	}
-	if env.Checkpoints == nil {
-		env.Checkpoints = map[string]*model.Checkpoint{}
+	if ns.Checkpoints == nil {
+		ns.Checkpoints = map[string]*model.Checkpoint{}
 	}
-	return env
+	return ns
 }
 
-func ensureBranch(env *model.EnvironmentState, name string) *model.BranchState {
+func ensureBranch(ns *model.NamespaceState, name string) *model.BranchState {
 	if strings.TrimSpace(name) == "" {
-		name = env.ActiveBranch
+		name = ns.ActiveBranch
 	}
 	if name == "" {
 		name = "main"
 	}
-	branch := env.Branches[name]
+	branch := ns.Branches[name]
 	if branch == nil {
 		branch = &model.BranchState{Name: name}
-		env.Branches[name] = branch
+		ns.Branches[name] = branch
 	}
-	if env.ActiveBranch == "" {
-		env.ActiveBranch = name
+	if ns.ActiveBranch == "" {
+		ns.ActiveBranch = name
 	}
 	return branch
 }
@@ -360,15 +350,14 @@ func appendRevision(db *model.Database, scope Scope, parentID int64, message str
 	id := db.NextRevision
 	db.NextRevision++
 	rev := &model.Revision{
-		ID:          id,
-		ParentID:    parentID,
-		Workspace:   scope.Workspace,
-		Environment: scope.Environment,
-		Branch:      scope.Branch,
-		Message:     message,
-		CreatedAt:   time.Now().UTC(),
-		Objects:     cloneObjects(objects),
-		Changes:     changes,
+		ID:        id,
+		ParentID:  parentID,
+		Namespace: scope.Namespace,
+		Branch:    scope.Branch,
+		Message:   message,
+		CreatedAt: time.Now().UTC(),
+		Objects:   cloneObjects(objects),
+		Changes:   changes,
 	}
 	db.Revisions[id] = rev
 	return rev
@@ -385,7 +374,7 @@ func snapshotForRevision(db *model.Database, revisionID int64) map[string]string
 }
 
 func resolveRevision(db *model.Database, scope Scope, revisionID int64, checkpointName, fromBranch string) (*model.Revision, error) {
-	env := ensureEnvironment(db, scope)
+	ns := ensureNamespace(db, scope)
 	switch {
 	case revisionID > 0:
 		rev := db.Revisions[revisionID]
@@ -394,7 +383,7 @@ func resolveRevision(db *model.Database, scope Scope, revisionID int64, checkpoi
 		}
 		return rev, nil
 	case checkpointName != "":
-		cp := env.Checkpoints[checkpointName]
+		cp := ns.Checkpoints[checkpointName]
 		if cp == nil {
 			return nil, fmt.Errorf("checkpoint %q not found", checkpointName)
 		}
@@ -404,7 +393,7 @@ func resolveRevision(db *model.Database, scope Scope, revisionID int64, checkpoi
 		}
 		return rev, nil
 	case fromBranch != "":
-		branch := env.Branches[fromBranch]
+		branch := ns.Branches[fromBranch]
 		if branch == nil {
 			return nil, fmt.Errorf("branch %q not found", fromBranch)
 		}
@@ -417,7 +406,7 @@ func resolveRevision(db *model.Database, scope Scope, revisionID int64, checkpoi
 		}
 		return rev, nil
 	default:
-		branch := ensureBranch(env, scope.Branch)
+		branch := ensureBranch(ns, scope.Branch)
 		if branch.HeadRevision == 0 {
 			return &model.Revision{Objects: map[string]string{}}, nil
 		}
@@ -482,8 +471,8 @@ func (s *Service) applyDocuments(ctx context.Context, scope Scope, documents []D
 		return nil, err
 	}
 	scope = normalizeScope(scope)
-	env := ensureEnvironment(db, scope)
-	branch := ensureBranch(env, scope.Branch)
+	ns := ensureNamespace(db, scope)
+	branch := ensureBranch(ns, scope.Branch)
 	current := snapshotForRevision(db, branch.HeadRevision)
 	next := cloneObjects(current)
 
@@ -498,8 +487,8 @@ func (s *Service) applyDocuments(ctx context.Context, scope Scope, documents []D
 
 	revision := appendRevision(db, scope, branch.HeadRevision, chooseMessage(message, "apply"), next, changes)
 	branch.HeadRevision = revision.ID
-	if env.ActiveBranch == "" {
-		env.ActiveBranch = branch.Name
+	if ns.ActiveBranch == "" {
+		ns.ActiveBranch = branch.Name
 	}
 	if err := s.engine.Save(ctx, db); err != nil {
 		return nil, err

@@ -20,7 +20,7 @@ func TestApplyCheckpointBranchRestoreFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	scope := Scope{Workspace: "payments", Environment: "prod", Branch: "main"}
+	scope := Scope{Namespace: "payments/prod", Branch: "main"}
 	applied, err := svc.Apply(ctx, ApplyInput{Scope: scope, Documents: []Document{{Key: document.NormalizeKey(appFile), Content: "{\n  \"enabled\": true,\n  \"timeout\": 30\n}\n"}}, Message: "initial apply"})
 	if err != nil {
 		t.Fatalf("apply: %v", err)
@@ -42,7 +42,7 @@ func TestApplyCheckpointBranchRestoreFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expScope := Scope{Workspace: "payments", Environment: "prod", Branch: "experiment"}
+	expScope := Scope{Namespace: "payments/prod", Branch: "experiment"}
 	expApplied, err := svc.Apply(ctx, ApplyInput{Scope: expScope, Documents: []Document{{Key: document.NormalizeKey(expFile), Content: "{\n  \"enabled\": true,\n  \"timeout\": 45\n}\n"}}, Message: "branch tweak"})
 	if err != nil {
 		t.Fatalf("branch apply: %v", err)
@@ -80,7 +80,7 @@ func TestRollbackCreatesNewRevision(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	svc := New(local.New(filepath.Join(dir, ".st8")))
-	scope := Scope{Workspace: "platform", Environment: "dev", Branch: "main"}
+	scope := Scope{Namespace: "platform-dev", Branch: "main"}
 
 	file := filepath.Join(dir, "limits.json")
 	if err := os.WriteFile(file, []byte("{\"qps\":100}"), 0o644); err != nil {

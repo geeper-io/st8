@@ -21,7 +21,7 @@ func TestHTTPServerRoundTrip(t *testing.T) {
 		Logger: logging.Logger(),
 	}))
 	handler := NewHTTP(svc, st8metrics.New(prometheus.NewRegistry()))
-	scope := service.Scope{Workspace: "payments", Environment: "prod", Branch: "main"}
+	scope := service.Scope{Namespace: "payments/prod", Branch: "main"}
 
 	applyResp := performJSON(t, handler, http.MethodPost, "/v1/apply", api.ApplyRequest{
 		Scope: scope,
@@ -37,7 +37,7 @@ func TestHTTPServerRoundTrip(t *testing.T) {
 		t.Fatalf("apply revision = %d, want 1", applied.Revision)
 	}
 
-	getReq := httptest.NewRequest(http.MethodGet, "/v1/state?workspace=payments&env=prod&branch=main", nil)
+	getReq := httptest.NewRequest(http.MethodGet, "/v1/state?namespace=payments/prod&branch=main", nil)
 	getResp := httptest.NewRecorder()
 	handler.ServeHTTP(getResp, getReq)
 	if getResp.Code != http.StatusOK {
@@ -52,7 +52,7 @@ func TestHTTPServerRoundTrip(t *testing.T) {
 		t.Fatalf("unexpected object content: %q", got.Objects["config/app.json"])
 	}
 
-	logReq := httptest.NewRequest(http.MethodGet, "/v1/log?workspace=payments&env=prod&branch=main&limit=10", nil)
+	logReq := httptest.NewRequest(http.MethodGet, "/v1/log?namespace=payments/prod&branch=main&limit=10", nil)
 	logResp := httptest.NewRecorder()
 	handler.ServeHTTP(logResp, logReq)
 	if logResp.Code != http.StatusOK {

@@ -237,9 +237,8 @@ func writeResult(w http.ResponseWriter, value any, err error) {
 
 func readScope(r *http.Request) service.Scope {
 	return service.Scope{
-		Workspace:   r.URL.Query().Get("workspace"),
-		Environment: r.URL.Query().Get("env"),
-		Branch:      r.URL.Query().Get("branch"),
+		Namespace: r.URL.Query().Get("namespace"),
+		Branch:    r.URL.Query().Get("branch"),
 	}
 }
 

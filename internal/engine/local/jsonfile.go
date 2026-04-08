@@ -33,8 +33,8 @@ func (e *Engine) Load(_ context.Context) (*model.Database, error) {
 	if db.Revisions == nil {
 		db.Revisions = map[int64]*model.Revision{}
 	}
-	if db.Workspaces == nil {
-		db.Workspaces = map[string]*model.WorkspaceState{}
+	if db.Namespaces == nil {
+		db.Namespaces = map[string]*model.NamespaceState{}
 	}
 	if db.NextRevision == 0 {
 		db.NextRevision = 1

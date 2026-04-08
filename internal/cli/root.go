@@ -26,8 +26,7 @@ func (a *App) rootCommand(ctx context.Context) *cobra.Command {
 	root.PersistentFlags().StringVar(&a.opts.stateDir, "state-dir", a.opts.stateDir, "directory for local st8 metadata")
 
 	// Scope flags — defaults from config, or built-in fallbacks.
-	root.PersistentFlags().StringVar(&a.opts.scope.Workspace, "workspace", a.opts.scope.Workspace, "workspace name")
-	root.PersistentFlags().StringVar(&a.opts.scope.Environment, "env", a.opts.scope.Environment, "environment name")
+	root.PersistentFlags().StringVar(&a.opts.scope.Namespace, "namespace", a.opts.scope.Namespace, "namespace (e.g. payments/prod)")
 	root.PersistentFlags().StringVar(&a.opts.scope.Branch, "branch", a.opts.scope.Branch, "branch name")
 
 	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {

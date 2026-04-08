@@ -5,14 +5,10 @@ import "time"
 type Database struct {
 	NextRevision int64                      `json:"next_revision"`
 	Revisions    map[int64]*Revision        `json:"revisions"`
-	Workspaces   map[string]*WorkspaceState `json:"workspaces"`
+	Namespaces   map[string]*NamespaceState `json:"namespaces"`
 }
 
-type WorkspaceState struct {
-	Environments map[string]*EnvironmentState `json:"environments"`
-}
-
-type EnvironmentState struct {
+type NamespaceState struct {
 	ActiveBranch string                  `json:"active_branch"`
 	Branches     map[string]*BranchState `json:"branches"`
 	Checkpoints  map[string]*Checkpoint  `json:"checkpoints"`
@@ -25,15 +21,14 @@ type BranchState struct {
 }
 
 type Revision struct {
-	ID          int64             `json:"id"`
-	ParentID    int64             `json:"parent_id"`
-	Workspace   string            `json:"workspace"`
-	Environment string            `json:"environment"`
-	Branch      string            `json:"branch"`
-	Message     string            `json:"message"`
-	CreatedAt   time.Time         `json:"created_at"`
-	Objects     map[string]string `json:"objects"`
-	Changes     []Change          `json:"changes"`
+	ID        int64             `json:"id"`
+	ParentID  int64             `json:"parent_id"`
+	Namespace string            `json:"namespace"`
+	Branch    string            `json:"branch"`
+	Message   string            `json:"message"`
+	CreatedAt time.Time         `json:"created_at"`
+	Objects   map[string]string `json:"objects"`
+	Changes   []Change          `json:"changes"`
 }
 
 type Change struct {
@@ -45,8 +40,7 @@ type Change struct {
 
 type Checkpoint struct {
 	Name        string    `json:"name"`
-	Workspace   string    `json:"workspace"`
-	Environment string    `json:"environment"`
+	Namespace   string    `json:"namespace"`
 	Branch      string    `json:"branch"`
 	RevisionID  int64     `json:"revision_id"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -57,6 +51,6 @@ func NewDatabase() *Database {
 	return &Database{
 		NextRevision: 1,
 		Revisions:    map[int64]*Revision{},
-		Workspaces:   map[string]*WorkspaceState{},
+		Namespaces:   map[string]*NamespaceState{},
 	}
 }

@@ -191,8 +191,7 @@ func (c *HTTP) Restore(ctx context.Context, input RestoreInput) (*ApplyResult, e
 
 func (c *HTTP) scopeQuery(scope Scope) url.Values {
 	q := url.Values{}
-	q.Set("workspace", scope.Workspace)
-	q.Set("env", scope.Environment)
+	q.Set("namespace", scope.Namespace)
 	q.Set("branch", scope.Branch)
 	return q
 }

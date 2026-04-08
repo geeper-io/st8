@@ -47,13 +47,12 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) (int, err
 	app := &App{
 		opts: options{
 			configPath: cfgPath,
-			stateDir:   config.Or(cfg.Defaults.StateDir, config.DefaultStateDir()),
+			stateDir:   config.Or(cfg.Server.Dir, config.DefaultStateDir()),
 			serverURL:  cfg.Server.URL,
 			token:      cfg.Server.Token,
 			scope: st8client.Scope{
-				Workspace:   config.Or(cfg.Defaults.Workspace, "default"),
-				Environment: config.Or(cfg.Defaults.Environment, "dev"),
-				Branch:      config.Or(cfg.Defaults.Branch, "main"),
+				Namespace: config.Or(cfg.Defaults.Namespace, "default"),
+				Branch:    config.Or(cfg.Defaults.Branch, "main"),
 			},
 		},
 		stdout: stdout,
