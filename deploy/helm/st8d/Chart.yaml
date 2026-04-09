@@ -1,0 +1,6 @@
+apiVersion: v2
+name: st8d
+description: st8d – a lightweight HTTP state server
+type: application
+version: 0.1.0
+appVersion: "latest"

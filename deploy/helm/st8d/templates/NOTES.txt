@@ -1,0 +1,24 @@
+st8d has been deployed.
+
+{{- if eq .Values.service.type "ClusterIP" }}
+
+Access st8d from within the cluster at:
+  http://{{ include "st8d.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+
+To forward the port locally:
+  kubectl port-forward svc/{{ include "st8d.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+
+{{- end }}
+
+{{- if .Values.auth.token }}
+Bearer token authentication is enabled.
+{{- end }}
+
+{{- if .Values.tls.enabled }}
+TLS is enabled (using Secret {{ .Values.tls.secretName }}).
+{{- end }}
+
+Health endpoints:
+  /healthz  – liveness
+  /readyz   – readiness
+  /metrics  – Prometheus metrics
