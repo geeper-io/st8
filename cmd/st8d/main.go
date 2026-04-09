@@ -53,7 +53,7 @@ func main() {
 
 	svc := service.New(eng)
 
-	var handler http.Handler = server.NewHTTP(svc, metricsCollector, prometheus.DefaultGatherer, appLogger)
+	var handler = server.NewHTTP(svc, metricsCollector, prometheus.DefaultGatherer, appLogger)
 
 	switch {
 	case *authConfig != "":

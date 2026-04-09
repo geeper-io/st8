@@ -33,12 +33,12 @@ func (a *App) applyCommand() *cobra.Command {
 				return err
 			}
 			if res.Noop {
-				fmt.Fprintf(a.stdout, "No changes. Head stays at revision %d.\n", res.Revision)
+				fmt.Fprintf(a.stdout, "No changes. Head stays at revision %d.\n", res.Revision) //nolint:errcheck
 				return nil
 			}
-			fmt.Fprintf(a.stdout, "Applied %d change(s) at revision %d.\n", len(res.Changes), res.Revision)
+			fmt.Fprintf(a.stdout, "Applied %d change(s) at revision %d.\n", len(res.Changes), res.Revision) //nolint:errcheck
 			for _, change := range res.Changes {
-				fmt.Fprintf(a.stdout, "%s %s\n", strings.ToUpper(change.Type), change.Key)
+				fmt.Fprintf(a.stdout, "%s %s\n", strings.ToUpper(change.Type), change.Key) //nolint:errcheck
 			}
 			return nil
 		},

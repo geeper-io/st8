@@ -30,7 +30,7 @@ func (a *App) getCommand() *cobra.Command {
 				if !ok {
 					return fmt.Errorf("key %q not found", key)
 				}
-				fmt.Fprint(a.stdout, value)
+				fmt.Fprint(a.stdout, value) //nolint:errcheck
 				return nil
 			}
 			fmt.Fprintf(a.stdout, "revision: %d\n", res.Revision)

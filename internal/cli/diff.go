@@ -27,7 +27,7 @@ func (a *App) diffCommand() *cobra.Command {
 				return err
 			}
 			if len(res.Changes) == 0 {
-				fmt.Fprintln(a.stdout, "No differences.")
+				fmt.Fprintln(a.stdout, "No differences.") //nolint:errcheck
 				return nil
 			}
 			fmt.Fprintf(a.stdout, "Diff from revision %d to %d\n", res.FromRevision, res.ToRevision)
