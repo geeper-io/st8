@@ -259,7 +259,7 @@ func (w *statusRecorder) WriteHeader(statusCode int) {
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, out any) bool {
-	defer r.Body.Close() //nolint:errcheck
+	defer r.Body.Close()
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 20<<20)).Decode(out); err != nil {
 		http.Error(w, fmt.Sprintf("invalid json: %v", err), http.StatusBadRequest)
 		return false

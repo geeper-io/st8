@@ -228,7 +228,7 @@ func (c *HTTP) doJSON(ctx context.Context, method, path string, reqBody any, out
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close() //nolint:errcheck
+	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
 		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
