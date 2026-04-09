@@ -1,0 +1,10 @@
+version: "2"
+
+linters:
+  settings:
+    errcheck:
+      # Ignore error returns from fmt.Fprint* (writing to stdout/stderr can't usefully fail).
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintln
+        - fmt.Fprintf

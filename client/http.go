@@ -103,11 +103,7 @@ type branchListResponse struct {
 
 func (c *HTTP) Apply(ctx context.Context, input ApplyInput) (*ApplyResult, error) {
 	var out ApplyResult
-	err := c.doJSON(ctx, http.MethodPost, "/v1/apply", applyRequest{
-		Scope:     input.Scope,
-		Documents: input.Documents,
-		Message:   input.Message,
-	}, &out)
+	err := c.doJSON(ctx, http.MethodPost, "/v1/apply", applyRequest(input), &out)
 	return &out, err
 }
 
@@ -190,13 +186,7 @@ func (c *HTTP) ListBranches(ctx context.Context, scope Scope) ([]BranchListEntry
 
 func (c *HTTP) Restore(ctx context.Context, input RestoreInput) (*ApplyResult, error) {
 	var out ApplyResult
-	err := c.doJSON(ctx, http.MethodPost, "/v1/restore", restoreRequest{
-		Scope:          input.Scope,
-		FromRevision:   input.FromRevision,
-		FromCheckpoint: input.FromCheckpoint,
-		FromBranch:     input.FromBranch,
-		Message:        input.Message,
-	}, &out)
+	err := c.doJSON(ctx, http.MethodPost, "/v1/restore", restoreRequest(input), &out)
 	return &out, err
 }
 
@@ -238,7 +228,7 @@ func (c *HTTP) doJSON(ctx context.Context, method, path string, reqBody any, out
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode >= 400 {
 		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
