@@ -1,17 +1,10 @@
 version: "2"
 
-linters-settings:
-  errcheck:
-    # Ignore error returns from fmt.Fprint* (writing to stdout/stderr can't usefully fail).
-    exclude-functions:
-      - fmt.Fprint
-      - fmt.Fprintln
-      - fmt.Fprintf
-
-issues:
-  exclude-rules:
-    # Body.Close in defer is idiomatic; the error is unactionable.
-    - linters: [errcheck]
-      text: "resp.Body.Close"
-    - linters: [errcheck]
-      text: "r.Body.Close"
+linters:
+  settings:
+    errcheck:
+      # Ignore error returns from fmt.Fprint* (writing to stdout/stderr can't usefully fail).
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintln
+        - fmt.Fprintf
