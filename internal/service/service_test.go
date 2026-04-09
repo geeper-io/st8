@@ -504,11 +504,6 @@ func TestConcurrentApplyDifferentNamespaces(t *testing.T) {
 
 // ─── Auth / RBAC tests ────────────────────────────────────────────────────────
 
-func newSvc(t *testing.T) *Service {
-t.Helper()
-return New(local.New(t.TempDir()))
-}
-
 func principalCtx(p *auth.Principal) context.Context {
 return auth.ContextWithPrincipal(context.Background(), p)
 }
