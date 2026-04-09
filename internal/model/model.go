@@ -2,55 +2,46 @@ package model
 
 import "time"
 
-type Database struct {
-	NextRevision int64                      `json:"next_revision"`
-	Revisions    map[int64]*Revision        `json:"revisions"`
-	Namespaces   map[string]*NamespaceState `json:"namespaces"`
+// NamespaceMeta holds namespace-level metadata including the revision counter.
+type NamespaceMeta struct {
+	ActiveBranch string `json:"active_branch"`
+	NextRevision int64  `json:"next_revision"` // next revision ID to assign
 }
 
-type NamespaceState struct {
-	ActiveBranch string                  `json:"active_branch"`
-	Branches     map[string]*BranchState `json:"branches"`
-	Checkpoints  map[string]*Checkpoint  `json:"checkpoints"`
-}
-
-type BranchState struct {
+// BranchMeta holds branch-level metadata.
+type BranchMeta struct {
 	Name         string `json:"name"`
 	HeadRevision int64  `json:"head_revision"`
 	BaseRevision int64  `json:"base_revision"`
 }
 
+// Revision records a delta commit on a branch.
+// It stores only the list of changes, not the full object snapshot.
 type Revision struct {
-	ID        int64             `json:"id"`
-	ParentID  int64             `json:"parent_id"`
-	Namespace string            `json:"namespace"`
-	Branch    string            `json:"branch"`
-	Message   string            `json:"message"`
-	CreatedAt time.Time         `json:"created_at"`
-	Objects   map[string]string `json:"objects"`
-	Changes   []Change          `json:"changes"`
+	ID        int64     `json:"id"`
+	ParentID  int64     `json:"parent_id"`
+	Namespace string    `json:"namespace"`
+	Branch    string    `json:"branch"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"created_at"`
+	Changes   []Change  `json:"changes"`
 }
 
+// Change describes one key modification within a revision.
 type Change struct {
 	Key    string `json:"key"`
-	Type   string `json:"type"`
+	Type   string `json:"type"` // "create", "update", "delete"
 	Before string `json:"before,omitempty"`
 	After  string `json:"after,omitempty"`
 }
 
+// Checkpoint is a named snapshot that stores the full object set at a revision.
 type Checkpoint struct {
-	Name        string    `json:"name"`
-	Namespace   string    `json:"namespace"`
-	Branch      string    `json:"branch"`
-	RevisionID  int64     `json:"revision_id"`
-	CreatedAt   time.Time `json:"created_at"`
-	Description string    `json:"description,omitempty"`
-}
-
-func NewDatabase() *Database {
-	return &Database{
-		NextRevision: 1,
-		Revisions:    map[int64]*Revision{},
-		Namespaces:   map[string]*NamespaceState{},
-	}
+	Name        string            `json:"name"`
+	Namespace   string            `json:"namespace"`
+	Branch      string            `json:"branch"`
+	RevisionID  int64             `json:"revision_id"`
+	CreatedAt   time.Time         `json:"created_at"`
+	Description string            `json:"description,omitempty"`
+	Objects     map[string]string `json:"objects"` // full snapshot at RevisionID
 }

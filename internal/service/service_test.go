@@ -47,8 +47,9 @@ func TestApplyCheckpointBranchRestoreFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("branch apply: %v", err)
 	}
-	if expApplied.Revision != 2 {
-		t.Fatalf("branch revision: got %d want 2", expApplied.Revision)
+	// Rev 2 is consumed by CreateBranch (copies source snapshot to new branch).
+	if expApplied.Revision != 3 {
+		t.Fatalf("branch revision: got %d want 3", expApplied.Revision)
 	}
 
 	restored, err := svc.Restore(ctx, RestoreInput{
@@ -59,8 +60,8 @@ func TestApplyCheckpointBranchRestoreFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("restore from branch: %v", err)
 	}
-	if restored.Revision != 3 {
-		t.Fatalf("restore revision: got %d want 3", restored.Revision)
+	if restored.Revision != 4 {
+		t.Fatalf("restore revision: got %d want 4", restored.Revision)
 	}
 
 	got, err := svc.Get(ctx, scope, 0, "")
