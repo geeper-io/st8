@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -21,7 +22,6 @@ import (
 func main() {
 	listen := flag.String("listen", ":8748", "listen address")
 	stateDir := flag.String("state-dir", ".st8d", "directory for server state")
-	token := flag.String("token", "", "admin bearer token; grants full access when --auth-config is not set, or is added as an admin entry when --auth-config is also provided")
 	authConfig := flag.String("auth-config", "", "path to YAML auth config for per-token RBAC policies")
 	readTimeout := flag.Duration("read-timeout", 30*time.Second, "HTTP read timeout")
 	writeTimeout := flag.Duration("write-timeout", 60*time.Second, "HTTP write timeout")
@@ -29,6 +29,10 @@ func main() {
 	tlsCert := flag.String("tls-cert", "", "path to TLS certificate file (PEM); enables HTTPS when set together with --tls-key")
 	tlsKey := flag.String("tls-key", "", "path to TLS private key file (PEM); enables HTTPS when set together with --tls-cert")
 	flag.Parse()
+
+	// ST8D_TOKEN grants full admin access. When --auth-config is also set,
+	// the token is prepended as an implicit admin entry in the loaded config.
+	adminToken := os.Getenv("ST8D_TOKEN")
 
 	appLogger := logging.Logger()
 	metricsRegistry := prometheus.DefaultRegisterer
@@ -57,10 +61,10 @@ func main() {
 		if err != nil {
 			appLogger.Fatalf("failed to load auth config: %v", err)
 		}
-		// Prepend --token as an implicit admin entry when both flags are set.
-		if *token != "" {
+		// Prepend ST8D_TOKEN as an implicit admin entry when both are set.
+		if adminToken != "" {
 			cfg.Tokens = append([]auth.TokenEntry{{
-				Token: *token,
+				Token: adminToken,
 				Name:  "admin",
 				Allow: auth.Policy{
 					Namespaces: []string{"*"},
@@ -72,8 +76,8 @@ func main() {
 		handler = auth.Middleware(cfg, handler)
 		appLogger.Infof("st8d RBAC auth enabled (%d token(s) loaded)", len(cfg.Tokens))
 
-	case *token != "":
-		handler = auth.Middleware(auth.AdminConfig(*token), handler)
+	case adminToken != "":
+		handler = auth.Middleware(auth.AdminConfig(adminToken), handler)
 		appLogger.Info("st8d bearer token authentication enabled")
 	}
 
