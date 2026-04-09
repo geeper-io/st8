@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
+	"github.com/geeper-io/st8/internal/auth"
 	"github.com/geeper-io/st8/internal/document"
 	"github.com/geeper-io/st8/internal/engine/local"
 )
@@ -498,4 +500,194 @@ func TestConcurrentApplyDifferentNamespaces(t *testing.T) {
 			t.Errorf("concurrent apply error: %v", err)
 		}
 	}
+}
+
+// ─── Auth / RBAC tests ────────────────────────────────────────────────────────
+
+func newSvc(t *testing.T) *Service {
+t.Helper()
+return New(local.New(t.TempDir()))
+}
+
+func principalCtx(p *auth.Principal) context.Context {
+return auth.ContextWithPrincipal(context.Background(), p)
+}
+
+func TestAuthScope_NamespaceDenied(t *testing.T) {
+svc := newSvc(t)
+p := &auth.Principal{Name: "app", Allow: auth.Policy{
+Namespaces: []string{"prod"},
+Branches:   []string{"*"},
+Verbs:      []string{auth.VerbRead, auth.VerbWrite},
+}}
+ctx := principalCtx(p)
+_, err := svc.Apply(ctx, ApplyInput{
+Scope:     Scope{Namespace: "dev", Branch: "main"},
+Documents: []Document{{Key: "x", Content: "v"}},
+})
+if err == nil || !strings.Contains(err.Error(), "forbidden") {
+t.Errorf("expected forbidden error, got %v", err)
+}
+}
+
+func TestAuthScope_BranchDenied(t *testing.T) {
+svc := newSvc(t)
+p := &auth.Principal{Name: "app", Allow: auth.Policy{
+Namespaces: []string{"*"},
+Branches:   []string{"main"},
+Verbs:      []string{auth.VerbRead, auth.VerbWrite},
+}}
+ctx := principalCtx(p)
+_, err := svc.Apply(ctx, ApplyInput{
+Scope:     Scope{Namespace: "default", Branch: "feature"},
+Documents: []Document{{Key: "x", Content: "v"}},
+})
+if err == nil || !strings.Contains(err.Error(), "forbidden") {
+t.Errorf("expected forbidden error, got %v", err)
+}
+}
+
+func TestAuthKeyPrefix_WriteRejected(t *testing.T) {
+svc := newSvc(t)
+p := &auth.Principal{Name: "app", Allow: auth.Policy{
+Namespaces: []string{"*"},
+Branches:   []string{"*"},
+KeyPrefix:  "app/",
+Verbs:      []string{auth.VerbRead, auth.VerbWrite},
+}}
+ctx := principalCtx(p)
+// key outside prefix → should be rejected
+_, err := svc.Apply(ctx, ApplyInput{
+Scope:     Scope{Namespace: "default", Branch: "main"},
+Documents: []Document{{Key: "other/key", Content: "v"}},
+})
+if err == nil || !strings.Contains(err.Error(), "forbidden") {
+t.Errorf("expected forbidden error for out-of-prefix key, got %v", err)
+}
+}
+
+func TestAuthKeyPrefix_WriteAllowed(t *testing.T) {
+svc := newSvc(t)
+p := &auth.Principal{Name: "app", Allow: auth.Policy{
+Namespaces: []string{"*"},
+Branches:   []string{"*"},
+KeyPrefix:  "app/",
+Verbs:      []string{auth.VerbRead, auth.VerbWrite},
+}}
+ctx := principalCtx(p)
+res, err := svc.Apply(ctx, ApplyInput{
+Scope:     Scope{Namespace: "default", Branch: "main"},
+Documents: []Document{{Key: "app/config", Content: "v1"}},
+})
+if err != nil {
+t.Fatalf("apply within prefix: %v", err)
+}
+if res.Noop {
+t.Error("expected non-noop apply")
+}
+}
+
+func TestAuthKeyPrefix_ReadFiltered(t *testing.T) {
+svc := newSvc(t)
+adminCtx := context.Background()
+scope := Scope{Namespace: "default", Branch: "main"}
+
+// Admin writes two keys under different prefixes
+if _, err := svc.Apply(adminCtx, ApplyInput{
+Scope: scope,
+Documents: []Document{
+{Key: "app/config", Content: "app-val"},
+{Key: "infra/config", Content: "infra-val"},
+},
+}); err != nil {
+t.Fatalf("admin apply: %v", err)
+}
+
+// Reader with prefix "app/" should only see app/config
+p := &auth.Principal{Name: "app", Allow: auth.Policy{
+Namespaces: []string{"*"},
+Branches:   []string{"*"},
+KeyPrefix:  "app/",
+Verbs:      []string{auth.VerbRead},
+}}
+ctx := principalCtx(p)
+got, err := svc.Get(ctx, scope, 0, "")
+if err != nil {
+t.Fatalf("get: %v", err)
+}
+if _, ok := got.Objects["infra/config"]; ok {
+t.Error("infra/config should not be visible to app token")
+}
+if got.Objects["app/config"] != "app-val" {
+t.Errorf("app/config = %q, want %q", got.Objects["app/config"], "app-val")
+}
+}
+
+func TestAuthKeyPrefix_RestoreScoped(t *testing.T) {
+svc := newSvc(t)
+adminCtx := context.Background()
+scope := Scope{Namespace: "default", Branch: "main"}
+
+// Setup: two keys, two revisions
+r1, err := svc.Apply(adminCtx, ApplyInput{
+Scope:     scope,
+Documents: []Document{{Key: "app/config", Content: "v1"}, {Key: "infra/net", Content: "net1"}},
+})
+if err != nil {
+t.Fatalf("apply r1: %v", err)
+}
+if _, err := svc.Apply(adminCtx, ApplyInput{
+Scope:     scope,
+Documents: []Document{{Key: "app/config", Content: "v2"}, {Key: "infra/net", Content: "net2"}},
+}); err != nil {
+t.Fatalf("apply r2: %v", err)
+}
+
+// App token rolls back to r1 — should only affect app/ keys
+p := &auth.Principal{Name: "app", Allow: auth.Policy{
+Namespaces: []string{"*"},
+Branches:   []string{"*"},
+KeyPrefix:  "app/",
+Verbs:      []string{auth.VerbRead, auth.VerbWrite},
+}}
+ctx := principalCtx(p)
+if _, err := svc.Rollback(ctx, scope, r1.Revision, "", ""); err != nil {
+t.Fatalf("rollback: %v", err)
+}
+
+// infra/net should remain at v2 (untouched by app token)
+got, err := svc.Get(adminCtx, scope, 0, "")
+if err != nil {
+t.Fatalf("get: %v", err)
+}
+if got.Objects["infra/net"] != "net2" {
+t.Errorf("infra/net = %q after scoped rollback, want net2", got.Objects["infra/net"])
+}
+if got.Objects["app/config"] != "v1" {
+t.Errorf("app/config = %q after scoped rollback, want v1", got.Objects["app/config"])
+}
+}
+
+func TestAuthScope_AllowedAccess(t *testing.T) {
+svc := newSvc(t)
+p := &auth.Principal{Name: "app", Allow: auth.Policy{
+Namespaces: []string{"prod", "staging"},
+Branches:   []string{"main", "release/*"},
+Verbs:      []string{auth.VerbRead, auth.VerbWrite},
+}}
+ctx := principalCtx(p)
+// Allowed namespace + branch
+if _, err := svc.Apply(ctx, ApplyInput{
+Scope:     Scope{Namespace: "prod", Branch: "main"},
+Documents: []Document{{Key: "k", Content: "v"}},
+}); err != nil {
+t.Errorf("apply to allowed scope: %v", err)
+}
+// Allowed branch glob
+if _, err := svc.Apply(ctx, ApplyInput{
+Scope:     Scope{Namespace: "staging", Branch: "release/1.0"},
+Documents: []Document{{Key: "k", Content: "v"}},
+}); err != nil {
+t.Errorf("apply to allowed glob branch: %v", err)
+}
 }

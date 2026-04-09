@@ -9,6 +9,7 @@ import (
 "sync"
 "time"
 
+"github.com/geeper-io/st8/internal/auth"
 "github.com/geeper-io/st8/internal/engine"
 "github.com/geeper-io/st8/internal/model"
 )
@@ -98,9 +99,62 @@ type GCResult struct {
 Pruned int `json:"pruned"`
 }
 
+// ─── Auth helpers ─────────────────────────────────────────────────────────────
+
+// checkScope returns an error if the caller's principal does not allow the
+// given namespace and branch. A missing principal means auth is disabled.
+func checkScope(ctx context.Context, ns, branch string) error {
+p, ok := auth.PrincipalFromContext(ctx)
+if !ok {
+return nil
+}
+if !p.AllowsNamespace(ns) {
+return fmt.Errorf("forbidden: namespace %q not allowed for token %q", ns, p.Name)
+}
+if branch != "" && !p.AllowsBranch(branch) {
+return fmt.Errorf("forbidden: branch %q not allowed for token %q", branch, p.Name)
+}
+return nil
+}
+
+// enforceKeyPrefix returns an error if any document key falls outside the
+// principal's allowed key prefix.
+func enforceKeyPrefix(ctx context.Context, documents []Document) error {
+p, ok := auth.PrincipalFromContext(ctx)
+if !ok || p.Allow.KeyPrefix == "" {
+return nil
+}
+for _, doc := range documents {
+if !p.AllowsKey(doc.Key) {
+return fmt.Errorf("forbidden: key %q is outside allowed prefix %q for token %q", doc.Key, p.Allow.KeyPrefix, p.Name)
+}
+}
+return nil
+}
+
+// filterKeysByPrefix removes keys from objs that fall outside the principal's
+// allowed key prefix. No-op when auth is disabled or key prefix is empty.
+func filterKeysByPrefix(ctx context.Context, objs map[string]string) {
+p, ok := auth.PrincipalFromContext(ctx)
+if !ok || p.Allow.KeyPrefix == "" {
+return
+}
+for k := range objs {
+if !p.AllowsKey(k) {
+delete(objs, k)
+}
+}
+}
+
 // ─── Apply ────────────────────────────────────────────────────────────────────
 
 func (s *Service) Apply(ctx context.Context, input ApplyInput) (*ApplyResult, error) {
+if err := checkScope(ctx, normalizeScope(input.Scope).Namespace, normalizeScope(input.Scope).Branch); err != nil {
+return nil, err
+}
+if err := enforceKeyPrefix(ctx, input.Documents); err != nil {
+return nil, err
+}
 s.mu.Lock()
 defer s.mu.Unlock()
 return s.applyDocuments(ctx, input.Scope, input.Documents, input.Message)
@@ -153,6 +207,9 @@ return &ApplyResult{Revision: revID, Changes: changes}, nil
 
 func (s *Service) Get(ctx context.Context, scope Scope, revisionID int64, checkpointName string) (*GetResult, error) {
 scope = normalizeScope(scope)
+if err := checkScope(ctx, scope.Namespace, scope.Branch); err != nil {
+return nil, err
+}
 
 // Checkpoint: stored with full snapshot.
 if checkpointName != "" {
@@ -163,7 +220,9 @@ return nil, err
 if cp == nil {
 return nil, fmt.Errorf("checkpoint %q not found", checkpointName)
 }
-return &GetResult{Revision: cp.RevisionID, Objects: cloneObjects(cp.Objects)}, nil
+objs := cloneObjects(cp.Objects)
+filterKeysByPrefix(ctx, objs)
+return &GetResult{Revision: cp.RevisionID, Objects: objs}, nil
 }
 
 // Current HEAD.
@@ -180,6 +239,7 @@ objs, err := s.engine.GetObjects(ctx, scope.Namespace, scope.Branch)
 if err != nil {
 return nil, err
 }
+filterKeysByPrefix(ctx, objs)
 return &GetResult{Revision: headRev, Objects: objs}, nil
 }
 
@@ -188,6 +248,7 @@ objs, err := s.reconstructAtRevision(ctx, scope, revisionID)
 if err != nil {
 return nil, err
 }
+filterKeysByPrefix(ctx, objs)
 return &GetResult{Revision: revisionID, Objects: objs}, nil
 }
 
@@ -247,6 +308,9 @@ return s.DiffDocuments(ctx, scope, revisionID, checkpointName, nil)
 
 func (s *Service) DiffDocuments(ctx context.Context, scope Scope, revisionID int64, checkpointName string, documents []Document) (*DiffResult, error) {
 scope = normalizeScope(scope)
+if err := checkScope(ctx, scope.Namespace, scope.Branch); err != nil {
+return nil, err
+}
 
 bm, err := s.engine.GetBranchMeta(ctx, scope.Namespace, scope.Branch)
 if err != nil {
@@ -294,6 +358,9 @@ if strings.TrimSpace(name) == "" {
 return nil, errors.New("checkpoint name is required")
 }
 scope = normalizeScope(scope)
+if err := checkScope(ctx, scope.Namespace, scope.Branch); err != nil {
+return nil, err
+}
 
 bm, err := s.ensureBranch(ctx, scope)
 if err != nil {
@@ -321,6 +388,9 @@ return &CheckpointResult{Name: name, RevisionID: bm.HeadRevision}, nil
 // ─── Rollback / Restore ───────────────────────────────────────────────────────
 
 func (s *Service) Rollback(ctx context.Context, scope Scope, revisionID int64, checkpointName, message string) (*ApplyResult, error) {
+if err := checkScope(ctx, normalizeScope(scope).Namespace, normalizeScope(scope).Branch); err != nil {
+return nil, err
+}
 s.mu.Lock()
 defer s.mu.Unlock()
 return s.restore(ctx, RestoreInput{
@@ -332,6 +402,9 @@ Message:        chooseMessage(message, "rollback"),
 }
 
 func (s *Service) Restore(ctx context.Context, input RestoreInput) (*ApplyResult, error) {
+if err := checkScope(ctx, normalizeScope(input.Scope).Namespace, normalizeScope(input.Scope).Branch); err != nil {
+return nil, err
+}
 s.mu.Lock()
 defer s.mu.Unlock()
 return s.restore(ctx, input)
@@ -353,6 +426,11 @@ target, _, err := s.resolveObjects(ctx, scope, input.FromRevision, input.FromChe
 if err != nil {
 return nil, err
 }
+
+// When a key prefix is enforced, scope both sides of the diff so that keys
+// outside the caller's prefix are neither modified nor deleted.
+filterKeysByPrefix(ctx, current)
+filterKeysByPrefix(ctx, target)
 
 changes := diffObjects(current, target)
 if len(changes) == 0 {
@@ -380,6 +458,9 @@ return &ApplyResult{Revision: revID, Changes: changes}, nil
 
 func (s *Service) Log(ctx context.Context, scope Scope, limit int) ([]LogEntry, error) {
 scope = normalizeScope(scope)
+if err := checkScope(ctx, scope.Namespace, scope.Branch); err != nil {
+return nil, err
+}
 bm, err := s.engine.GetBranchMeta(ctx, scope.Namespace, scope.Branch)
 if err != nil {
 return nil, err
@@ -415,6 +496,9 @@ return out, nil
 // ─── Branches ─────────────────────────────────────────────────────────────────
 
 func (s *Service) CreateBranch(ctx context.Context, scope Scope, name string, fromRevision int64, fromCheckpoint string) (*BranchResult, error) {
+if err := checkScope(ctx, normalizeScope(scope).Namespace, normalizeScope(scope).Branch); err != nil {
+return nil, err
+}
 s.mu.Lock()
 defer s.mu.Unlock()
 if strings.TrimSpace(name) == "" {
@@ -460,6 +544,9 @@ return &BranchResult{Name: name, BaseRevision: srcRevID, HeadRevision: revID}, n
 
 func (s *Service) ListBranches(ctx context.Context, scope Scope) ([]BranchListEntry, error) {
 scope = normalizeScope(scope)
+if err := checkScope(ctx, scope.Namespace, ""); err != nil {
+return nil, err
+}
 names, err := s.engine.ListBranches(ctx, scope.Namespace)
 if err != nil {
 return nil, err
