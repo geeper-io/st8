@@ -259,6 +259,12 @@ func NewHTTP(svc *service.Service, metrics *st8metrics.Collector, gatherer prome
 		metrics.ObserveOperation("gc", result, time.Since(start))
 		writeResult(w, res, err)
 	}))
+
+	// OFREP – OpenFeature Remote Evaluation Protocol
+	// https://github.com/open-feature/protocol
+	mux.HandleFunc("/ofrep/v1/evaluate/flags/{key...}", handle("/ofrep/v1/evaluate/flags/{key}", ofrepSingleFlagHandler(svc)))
+	mux.HandleFunc("/ofrep/v1/evaluate/flags", handle("/ofrep/v1/evaluate/flags", ofrepBulkFlagsHandler(svc)))
+
 	return mux
 }
 

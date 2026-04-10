@@ -206,6 +206,10 @@ restore            Restore state from a revision, checkpoint, or branch
 gc                 Garbage-collect old revisions  (--keep N, default 10)
 ```
 
+## OpenFeature Remote Evaluation Protocol (OFREP)
+
+`st8d` implements [OFREP](https://github.com/open-feature/protocol), so any OpenFeature SDK can read st8 state as feature flags without a custom provider. See the [OpenFeature integration guide](https://geeper-io.github.io/st8/guides/openfeature/) for details.
+
 ## Current Notes
 
 - `apply` stores each input file under its normalized path as the state key.

@@ -59,6 +59,10 @@ func Middleware(cfg *Config, next http.Handler) http.Handler {
 		principal := &Principal{Name: entry.Name, Allow: entry.Allow}
 
 		verb, known := routeVerb[r.Method+" "+r.URL.Path]
+		if !known && strings.HasPrefix(r.URL.Path, "/ofrep/") {
+			verb = VerbRead
+			known = true
+		}
 		if known && !principal.AllowsVerb(verb) {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return

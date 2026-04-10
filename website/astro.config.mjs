@@ -26,6 +26,7 @@ export default defineConfig({
 						{ label: 'Feature Flags', slug: 'guides/feature-flags' },
 						{ label: 'A/B Testing', slug: 'guides/ab-testing' },
 						{ label: 'CI/CD Integration', slug: 'guides/ci-cd' },
+						{ label: 'OpenFeature (OFREP)', slug: 'guides/openfeature' },
 					],
 				},
 				{
