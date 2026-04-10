@@ -79,7 +79,6 @@ func (e Experiment) Assignment(userID string) Variant {
 type Client struct {
     st8   st8.Client
     scope st8.Scope
-    cache *cachedConfig // see dynamic-config guide
 }
 
 func (c *Client) Experiments(ctx context.Context) (Experiments, error) {

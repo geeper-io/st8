@@ -20,11 +20,12 @@ export default defineConfig({
 					],
 				},
 				{
-					label: 'Use Cases',
+					label: 'Recipes',
 					items: [
 						{ label: 'Dynamic Configuration', slug: 'guides/dynamic-config' },
-						{ label: 'A/B Testing', slug: 'guides/ab-testing' },
 						{ label: 'Feature Flags', slug: 'guides/feature-flags' },
+						{ label: 'A/B Testing', slug: 'guides/ab-testing' },
+						{ label: 'CI/CD Integration', slug: 'guides/ci-cd' },
 					],
 				},
 				{

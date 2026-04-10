@@ -33,9 +33,8 @@ package flags
 import (
     "context"
     "encoding/json"
-    "sync/atomic"
+    "sync"
     "time"
-    "unsafe"
 
     st8 "github.com/geeper-io/st8/client"
 )
@@ -51,25 +50,25 @@ type Flags struct {
 
 // Client fetches and caches feature flags from st8.
 type Client struct {
-    st8     st8.Client
-    scope   st8.Scope
-    current unsafe.Pointer // *Flags
+    st8   st8.Client
+    scope st8.Scope
+    mu    sync.RWMutex
+    flags Flags
 }
 
 func NewClient(serverURL, token, namespace string) *Client {
-    c := &Client{
+    return &Client{
         st8:   st8.NewHTTP(serverURL, st8.WithToken(token), st8.WithTimeout(2*time.Second)),
         scope: st8.Scope{Namespace: namespace, Branch: "main"},
+        flags: Flags{MaxUploadMB: 10}, // safe defaults
     }
-    // Initialize with safe defaults
-    empty := &Flags{MaxUploadMB: 10}
-    atomic.StorePointer(&c.current, unsafe.Pointer(empty))
-    return c
 }
 
-// Current returns the cached flags (no network call).
-func (c *Client) Current() *Flags {
-    return (*Flags)(atomic.LoadPointer(&c.current))
+// Current returns the cached flags — no network call.
+func (c *Client) Current() Flags {
+    c.mu.RLock()
+    defer c.mu.RUnlock()
+    return c.flags
 }
 
 // Refresh fetches the latest flags from st8.
@@ -86,7 +85,9 @@ func (c *Client) Refresh(ctx context.Context) error {
     if err := json.Unmarshal([]byte(raw), &f); err != nil {
         return err
     }
-    atomic.StorePointer(&c.current, unsafe.Pointer(&f))
+    c.mu.Lock()
+    c.flags = f
+    c.mu.Unlock()
     return nil
 }
 
@@ -116,7 +117,7 @@ type Server struct {
 }
 
 func (s *Server) Upload(w http.ResponseWriter, r *http.Request) {
-    f := s.flags.Current()
+    f := s.flags.Current() // reads from cache, no network call
 
     maxBytes := int64(f.MaxUploadMB) << 20
     r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
