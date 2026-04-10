@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 
 	"github.com/geeper-io/st8/internal/service"
 )
@@ -41,11 +42,6 @@ type ofrepEvalFailure struct {
 type ofrepBulkSuccess struct {
 	Flags    []any          `json:"flags"`
 	Metadata map[string]any `json:"metadata,omitempty"`
-}
-
-type ofrepBulkFailure struct {
-	ErrorCode    string `json:"errorCode"`
-	ErrorDetails string `json:"errorDetails,omitempty"`
 }
 
 type ofrepGeneralError struct {
@@ -81,6 +77,7 @@ func ofrepSingleFlagHandler(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
+		prefix := r.URL.Query().Get("prefix")
 		scope := readScope(r)
 		result, err := svc.Get(r.Context(), scope, 0, "")
 		if err != nil {
@@ -88,7 +85,8 @@ func ofrepSingleFlagHandler(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		content, ok := result.Objects[key]
+		docKey := prefix + key
+		content, ok := result.Objects[docKey]
 		if !ok {
 			writeOFREPError(w, http.StatusNotFound, ofrepEvalFailure{
 				Key:          key,
@@ -126,6 +124,7 @@ func ofrepBulkFlagsHandler(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
+		prefix := r.URL.Query().Get("prefix")
 		scope := readScope(r)
 		result, err := svc.Get(r.Context(), scope, 0, "")
 		if err != nil {
@@ -141,9 +140,16 @@ func ofrepBulkFlagsHandler(svc *service.Service) http.HandlerFunc {
 
 		variant := revVariant(result.Revision)
 		flags := make([]any, 0, len(result.Objects))
-		for key, content := range result.Objects {
+		for docKey, content := range result.Objects {
+			flagKey := docKey
+			if prefix != "" {
+				if !strings.HasPrefix(docKey, prefix) {
+					continue
+				}
+				flagKey = docKey[len(prefix):]
+			}
 			flags = append(flags, ofrepEvalSuccess{
-				Key:     key,
+				Key:     flagKey,
 				Value:   parseDocumentValue(content),
 				Reason:  "STATIC",
 				Variant: variant,

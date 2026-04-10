@@ -225,6 +225,82 @@ func TestOFREPSingleFlagMethodNotAllowed(t *testing.T) {
 	}
 }
 
+// ─── Prefix filtering ────────────────────────────────────────────────────────
+
+func TestOFREPBulkPrefix(t *testing.T) {
+	h := newHandler(t)
+	applyOFREP(t, h, "ns", "main", []service.Document{
+		{Key: "flags/dark-mode", Content: "true"},
+		{Key: "flags/timeout", Content: "30"},
+		{Key: "other/setting", Content: `"ignored"`},
+	})
+
+	url := "/ofrep/v1/evaluate/flags?namespace=ns&branch=main&prefix=flags/"
+	rec := doJSON(t, h, http.MethodPost, url,
+		ofrepEvalRequest{Context: map[string]any{"targetingKey": "u1"}})
+	mustOK(t, rec)
+
+	var bulk ofrepBulkSuccess
+	decodeBody(t, rec, &bulk)
+	if len(bulk.Flags) != 2 {
+		t.Fatalf("expected 2 flags, got %d", len(bulk.Flags))
+	}
+
+	byKey := map[string]map[string]any{}
+	for _, raw := range bulk.Flags {
+		b, _ := json.Marshal(raw)
+		var m map[string]any
+		_ = json.Unmarshal(b, &m)
+		byKey[m["key"].(string)] = m
+	}
+
+	if _, ok := byKey["dark-mode"]; !ok {
+		t.Error("expected key dark-mode (prefix stripped)")
+	}
+	if _, ok := byKey["timeout"]; !ok {
+		t.Error("expected key timeout (prefix stripped)")
+	}
+	if _, ok := byKey["other/setting"]; ok {
+		t.Error("other/setting should be excluded by prefix")
+	}
+}
+
+func TestOFREPSingleFlagPrefix(t *testing.T) {
+	h := newHandler(t)
+	applyOFREP(t, h, "ns", "main", []service.Document{
+		{Key: "flags/dark-mode", Content: "true"},
+	})
+
+	url := "/ofrep/v1/evaluate/flags/dark-mode?namespace=ns&branch=main&prefix=flags/"
+	rec := doJSON(t, h, http.MethodPost, url,
+		ofrepEvalRequest{Context: map[string]any{"targetingKey": "u1"}})
+	mustOK(t, rec)
+
+	var resp ofrepEvalSuccess
+	decodeBody(t, rec, &resp)
+	if resp.Key != "dark-mode" {
+		t.Errorf("key = %q, want dark-mode", resp.Key)
+	}
+	if resp.Value != true {
+		t.Errorf("value = %v, want true", resp.Value)
+	}
+}
+
+func TestOFREPSingleFlagPrefixNotFound(t *testing.T) {
+	h := newHandler(t)
+	applyOFREP(t, h, "ns", "main", []service.Document{
+		{Key: "flags/dark-mode", Content: "true"},
+	})
+
+	// asking for dark-mode without prefix → not found (doc key is flags/dark-mode)
+	rec := doJSON(t, h, http.MethodPost,
+		ofrepSingleURL("dark-mode", "ns", "main"),
+		ofrepEvalRequest{Context: map[string]any{"targetingKey": "u1"}})
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", rec.Code)
+	}
+}
+
 // ─── parseDocumentValue unit tests ───────────────────────────────────────────
 
 func TestParseDocumentValue(t *testing.T) {

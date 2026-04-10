@@ -32,6 +32,7 @@ Evaluate a single flag. Used by **server-side** (dynamic context) OFREP provider
 |---|---|---|
 | `namespace` | `default` | The st8 namespace to read from |
 | `branch` | `main` | The st8 branch to read from |
+| `prefix` | _(none)_ | Key prefix to prepend when looking up the document (see [Key prefix](#key-prefix)) |
 
 **Request body:**
 
@@ -70,7 +71,7 @@ Evaluate a single flag. Used by **server-side** (dynamic context) OFREP provider
 
 Evaluate all flags at once. Used by **client-side** (static context) OFREP providers, which cache all values locally after a single call.
 
-Accepts the same `?namespace=` and `?branch=` query parameters.
+Accepts the same `?namespace=`, `?branch=`, and `?prefix=` query parameters.
 
 **Request body:**
 
