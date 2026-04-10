@@ -26,6 +26,11 @@ type CheckpointRequest struct {
 	Description string `json:"description"`
 }
 
+type DeleteCheckpointRequest struct {
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+}
+
 type RollbackRequest struct {
 	Scope          Scope  `json:"scope"`
 	RevisionID     int64  `json:"revision_id"`

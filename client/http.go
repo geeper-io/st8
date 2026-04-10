@@ -67,6 +67,11 @@ type checkpointRequest struct {
 	Description string `json:"description"`
 }
 
+type deleteCheckpointRequest struct {
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+}
+
 type rollbackRequest struct {
 	Scope          Scope  `json:"scope"`
 	RevisionID     int64  `json:"revision_id"`
@@ -139,6 +144,13 @@ func (c *HTTP) Checkpoint(ctx context.Context, scope Scope, name, description st
 		Description: description,
 	}, &out)
 	return &out, err
+}
+
+func (c *HTTP) DeleteCheckpoint(ctx context.Context, namespace, name string) error {
+	return c.doJSON(ctx, http.MethodDelete, "/v1/checkpoints", deleteCheckpointRequest{
+		Namespace: namespace,
+		Name:      name,
+	}, nil)
 }
 
 func (c *HTTP) Rollback(ctx context.Context, scope Scope, revision int64, checkpoint, message string) (*ApplyResult, error) {
