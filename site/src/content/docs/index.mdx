@@ -1,0 +1,38 @@
+---
+title: st8 — Versioned State Store
+description: Lightweight, versioned key-value store for dynamic configuration, feature flags, and A/B testing.
+template: splash
+hero:
+  tagline: Dynamic config that feels like git. Namespaces, branches, checkpoints, rollbacks — deploy config changes without redeploying code.
+  actions:
+    - text: Get started
+      link: /guides/quickstart/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/geeper-io/st8
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+  <Card title="Versioned by default" icon="document">
+    Every change creates an immutable revision. Roll back to any point in history with a single command.
+  </Card>
+  <Card title="Branches for isolation" icon="branches">
+    Run A/B tests or canary rollouts by writing different config to different branches. Your app reads whichever branch matches the request.
+  </Card>
+  <Card title="Namespaces for multi-tenancy" icon="list-format">
+    Separate config for each service, team, or environment. Use any naming convention — `payments/prod`, `platform-staging`, or just `default`.
+  </Card>
+  <Card title="HTTP API + Go client" icon="puzzle">
+    Talk to st8d over a simple REST API. A typed Go client is included. Integrate in minutes, not days.
+  </Card>
+  <Card title="Checkpoints" icon="approve-check-circle">
+    Tag known-good revisions with a name. Rollbacks become `--checkpoint stable` instead of hunting for a revision ID.
+  </Card>
+  <Card title="Zero dependencies to start" icon="rocket">
+    Run `st8ctl --local apply` to spin up an embedded server backed by local disk. No Docker, no cloud account needed.
+  </Card>
+</CardGrid>
