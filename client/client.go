@@ -99,12 +99,12 @@ type GCResult struct {
 	Pruned int `json:"pruned"`
 }
 
-
 type Client interface {
 	Apply(ctx context.Context, input ApplyInput) (*ApplyResult, error)
 	Get(ctx context.Context, scope Scope, revision int64, checkpoint string) (*GetResult, error)
 	DiffDocuments(ctx context.Context, scope Scope, revision int64, checkpoint string, docs []Document) (*DiffResult, error)
 	Checkpoint(ctx context.Context, scope Scope, name, description string) (*CheckpointResult, error)
+	DeleteCheckpoint(ctx context.Context, namespace, name string) error
 	Rollback(ctx context.Context, scope Scope, revision int64, checkpoint, message string) (*ApplyResult, error)
 	Log(ctx context.Context, scope Scope, limit int) ([]LogEntry, error)
 	CreateBranch(ctx context.Context, scope Scope, name string, revision int64, checkpoint string) (*BranchResult, error)

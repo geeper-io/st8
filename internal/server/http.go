@@ -27,11 +27,11 @@ func NewHTTP(svc *service.Service, metrics *st8metrics.Collector, gatherer prome
 			metrics.ObserveHTTPRequest(route, r.Method, recorder.statusCode, latency)
 			if logger != nil {
 				logger.WithFields(logrus.Fields{
-					"method":    r.Method,
-					"path":      r.URL.Path,
-					"status":    recorder.statusCode,
+					"method":     r.Method,
+					"path":       r.URL.Path,
+					"status":     recorder.statusCode,
 					"latency_ms": latency.Milliseconds(),
-					"namespace": r.URL.Query().Get("namespace"),
+					"namespace":  r.URL.Query().Get("namespace"),
 				}).Info("access")
 			}
 		}
@@ -116,22 +116,36 @@ func NewHTTP(svc *service.Service, metrics *st8metrics.Collector, gatherer prome
 		writeResult(w, res, err)
 	}))
 	mux.HandleFunc("/v1/checkpoints", handle("/v1/checkpoints", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
+		switch r.Method {
+		case http.MethodPost:
+			var req api.CheckpointRequest
+			if !decodeJSON(w, r, &req) {
+				return
+			}
+			start := time.Now()
+			res, err := svc.Checkpoint(r.Context(), req.Scope, req.Name, req.Description)
+			result := "success"
+			if err != nil {
+				result = "error"
+			}
+			metrics.ObserveOperation("checkpoint", result, time.Since(start))
+			writeResult(w, res, err)
+		case http.MethodDelete:
+			var req api.DeleteCheckpointRequest
+			if !decodeJSON(w, r, &req) {
+				return
+			}
+			start := time.Now()
+			err := svc.DeleteCheckpoint(r.Context(), req.Namespace, req.Name)
+			result := "success"
+			if err != nil {
+				result = "error"
+			}
+			metrics.ObserveOperation("delete_checkpoint", result, time.Since(start))
+			writeResult(w, struct{}{}, err)
+		default:
 			methodNotAllowed(w)
-			return
 		}
-		var req api.CheckpointRequest
-		if !decodeJSON(w, r, &req) {
-			return
-		}
-		start := time.Now()
-		res, err := svc.Checkpoint(r.Context(), req.Scope, req.Name, req.Description)
-		result := "success"
-		if err != nil {
-			result = "error"
-		}
-		metrics.ObserveOperation("checkpoint", result, time.Since(start))
-		writeResult(w, res, err)
 	}))
 	mux.HandleFunc("/v1/rollback", handle("/v1/rollback", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

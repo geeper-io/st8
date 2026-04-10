@@ -31,7 +31,6 @@ func (a *App) rootCommand(ctx context.Context) *cobra.Command {
 	root.PersistentFlags().StringVar(&a.opts.scope.Branch, "branch", a.opts.scope.Branch, "branch name")
 
 	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-		_ = ctx
 		fmt.Fprintln(a.stdout, "st8ctl safely applies, tracks, diffs, checkpoints, rolls back, and branches config state.")
 		fmt.Fprintln(a.stdout)
 		fmt.Fprintln(a.stdout, "Use --server http://host:8748 to connect to st8d, or --local to start a temporary local instance for demos and testing.")

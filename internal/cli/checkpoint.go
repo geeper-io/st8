@@ -27,5 +27,26 @@ func (a *App) checkpointCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&description, "description", "", "checkpoint description")
+	cmd.AddCommand(a.checkpointDeleteCommand())
 	return cmd
+}
+
+func (a *App) checkpointDeleteCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "delete <name>",
+		Short: "Delete a named checkpoint",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			backend, cleanup, err := a.chooseClient(cmd.Context())
+			if err != nil {
+				return err
+			}
+			defer cleanup()
+			if err := backend.DeleteCheckpoint(cmd.Context(), a.opts.scope.Namespace, args[0]); err != nil {
+				return err
+			}
+			fmt.Fprintf(a.stdout, "Deleted checkpoint %s\n", args[0])
+			return nil
+		},
+	}
 }

@@ -5,8 +5,8 @@ import (
 	"github.com/geeper-io/st8/internal/document"
 )
 
-func loadDocuments(paths []string) ([]st8client.Document, error) {
-	items, err := document.Load(paths)
+func loadDocumentsWithValues(paths, values []string) ([]st8client.Document, error) {
+	items, err := document.LoadWithValues(paths, values)
 	if err != nil {
 		return nil, err
 	}
