@@ -197,10 +197,12 @@ func (c *cachedConfig) RefreshWithDiff(ctx context.Context, docs []st8.Document)
 
 ```bash
 # Update a single document
-st8ctl apply \
+cat > feature_flags.json <<'EOF'
+{"dark_mode": true, "new_checkout": true, "max_page_size": 200}
+EOF
+st8ctl apply feature_flags.json \
   --namespace myapp/prod \
-  --message "increase page size limit" \
-  --doc feature_flags='{"dark_mode":true,"new_checkout":true,"max_page_size":200}'
+  --message "increase page size limit"
 
 # Verify in production within seconds (no deploy)
 ```

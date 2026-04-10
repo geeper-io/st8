@@ -24,15 +24,14 @@ These flags are available on every command.
 
 ## apply
 
-Apply one or more documents to the current namespace/branch.
+Apply one or more files to the current namespace/branch. Each file path becomes the document key.
 
 ```
-st8ctl apply [flags]
+st8ctl apply <file> [file...] [flags]
 ```
 
 | Flag | Description |
 |---|---|
-| `--doc <key>=<value>` | Document to apply (repeatable). Value is the raw content (usually JSON). |
 | `--message` | Commit message describing the change |
 | `--namespace` | Target namespace (overrides global) |
 | `--branch` | Target branch (overrides global) |
@@ -40,45 +39,40 @@ st8ctl apply [flags]
 **Examples**
 
 ```bash
-# Apply a single document
-st8ctl apply --message "enable dark mode" \
-  --doc feature_flags='{"dark_mode":true}'
+# Apply a single file
+st8ctl apply feature_flags.json --message "enable dark mode"
 
-# Apply multiple documents
-st8ctl apply --message "update config" \
-  --doc feature_flags='{"dark_mode":true}' \
-  --doc rate_limits='{"api":1000,"search":50}'
+# Apply multiple files
+st8ctl apply feature_flags.json rate_limits.json --message "update config"
 
 # Apply to a specific namespace and branch
-st8ctl apply \
+st8ctl apply rate_limits.json \
   --namespace payments/prod \
   --branch canary \
-  --message "canary: new rate limits" \
-  --doc rate_limits='{"api":500}'
+  --message "canary: new rate limits"
 ```
 
 ## get
 
-Fetch the current state of a namespace/branch.
+Fetch the current state of a namespace/branch, or a specific document by key.
 
 ```
-st8ctl get [flags]
+st8ctl get [key] [flags]
 ```
 
 | Flag | Description |
 |---|---|
 | `--revision` | Fetch a specific revision ID |
 | `--checkpoint` | Fetch the revision named by a checkpoint |
-| `--format` | Output format: `table` (default) or `json` |
 
 **Examples**
 
 ```bash
-# Get current state
+# Get current state (all documents)
 st8ctl get
 
-# Get as JSON
-st8ctl get --format json
+# Get a specific document by key
+st8ctl get feature_flags.json
 
 # Get a specific revision
 st8ctl get --revision 42
@@ -107,23 +101,21 @@ st8ctl log --limit 50
 
 ## diff
 
-Show what would change if the given documents were applied, without actually applying them.
+Show what would change if the given files were applied, without actually applying them.
 
 ```
-st8ctl diff [flags]
+st8ctl diff [file...] [flags]
 ```
 
 | Flag | Description |
 |---|---|
-| `--doc <key>=<value>` | Document to diff (repeatable) |
 | `--revision` | Compare against a specific revision |
 | `--checkpoint` | Compare against a checkpoint |
 
 **Example**
 
 ```bash
-st8ctl diff \
-  --doc feature_flags='{"dark_mode":false,"new_checkout":true}'
+st8ctl diff feature_flags.json
 ```
 
 ## checkpoint
@@ -131,18 +123,31 @@ st8ctl diff \
 Create a named checkpoint pointing to the current revision.
 
 ```
-st8ctl checkpoint [flags]
+st8ctl checkpoint <name> [flags]
 ```
 
 | Flag | Description |
 |---|---|
-| `--name` | Checkpoint name (required) |
 | `--description` | Human-readable description |
 
 **Example**
 
 ```bash
-st8ctl checkpoint --name stable --description "Pre-launch state, verified by QA"
+st8ctl checkpoint stable --description "Pre-launch state, verified by QA"
+```
+
+### checkpoint delete
+
+Delete a named checkpoint.
+
+```
+st8ctl checkpoint delete <name>
+```
+
+**Example**
+
+```bash
+st8ctl checkpoint delete stable
 ```
 
 ## rollback
@@ -177,20 +182,16 @@ st8ctl branch create <name> [flags]
 
 | Flag | Description |
 |---|---|
-| `--from-revision` | Base the new branch on a specific revision |
-| `--from-checkpoint` | Base the new branch on a checkpoint |
+| `--revision` | Base the new branch on a specific revision |
+| `--checkpoint` | Base the new branch on a checkpoint |
 
 **Example**
 
 ```bash
-st8ctl branch create experiment/new-pricing --from-checkpoint stable
+st8ctl branch create experiment/new-pricing --checkpoint stable
 ```
 
-### branch list
-
-```bash
-st8ctl branch list
-```
+To list branches, run `st8ctl branch` with no arguments.
 
 ## restore
 
@@ -203,8 +204,8 @@ st8ctl restore [flags]
 | Flag | Description |
 |---|---|
 | `--from-branch` | Branch to restore from |
-| `--from-revision` | Revision to restore from |
-| `--from-checkpoint` | Checkpoint to restore from |
+| `--revision` | Revision to restore from |
+| `--checkpoint` | Checkpoint to restore from |
 | `--message` | Message describing the restore |
 
 **Example**

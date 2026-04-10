@@ -44,7 +44,7 @@ Apply documents to a namespace/branch. Creates a new revision if any document ch
 {
   "scope": {"namespace": "myapp/prod", "branch": "main"},
   "documents": [
-    {"key": "feature_flags", "value": "{\"dark_mode\":true}"}
+    {"key": "feature_flags", "content": "{\"dark_mode\":true}"}
   ],
   "message": "enable dark mode"
 }
@@ -54,10 +54,10 @@ Apply documents to a namespace/branch. Creates a new revision if any document ch
 
 ```json
 {
-  "revision_id": 42,
+  "revision": 42,
   "noop": false,
   "changes": [
-    {"key": "feature_flags", "old": "{\"dark_mode\":false}", "new": "{\"dark_mode\":true}"}
+    {"key": "feature_flags", "type": "update", "before": "{\"dark_mode\":false}", "after": "{\"dark_mode\":true}"}
   ]
 }
 ```
@@ -99,7 +99,7 @@ Check what would change without applying.
   "revision_id": 0,
   "checkpoint_name": "",
   "documents": [
-    {"key": "feature_flags", "value": "{\"dark_mode\":false}"}
+    {"key": "feature_flags", "content": "{\"dark_mode\":false}"}
   ]
 }
 ```
@@ -108,9 +108,10 @@ Check what would change without applying.
 
 ```json
 {
-  "revision_id": 42,
+  "from_revision": 42,
+  "to_revision": 43,
   "changes": [
-    {"key": "feature_flags", "old": "{\"dark_mode\":true}", "new": "{\"dark_mode\":false}"}
+    {"key": "feature_flags", "type": "update", "before": "{\"dark_mode\":true}", "after": "{\"dark_mode\":false}"}
   ]
 }
 ```
@@ -136,10 +137,12 @@ Revision history for a namespace/branch.
 {
   "entries": [
     {
-      "revision_id": 42,
+      "id": 42,
+      "parent_id": 41,
+      "branch": "main",
       "message": "enable dark mode",
       "created_at": "2024-01-15T10:30:00Z",
-      "changes": [{"key": "feature_flags", "old": "...", "new": "..."}]
+      "changes": [{"key": "feature_flags", "type": "update", "before": "...", "after": "..."}]
     }
   ]
 }
@@ -164,10 +167,24 @@ Create a checkpoint.
 ```json
 {
   "name": "stable",
-  "revision_id": 42,
-  "created_at": "2024-01-15T10:30:00Z"
+  "revision_id": 42
 }
 ```
+
+### DELETE /v1/checkpoints
+
+Delete a named checkpoint.
+
+**Request body:**
+
+```json
+{
+  "namespace": "myapp/prod",
+  "name": "stable"
+}
+```
+
+**Response:** `{}`
 
 ### POST /v1/rollback
 
@@ -199,8 +216,8 @@ List branches in a namespace.
 ```json
 {
   "branches": [
-    {"name": "main", "revision_id": 42, "created_at": "2024-01-01T00:00:00Z"},
-    {"name": "canary", "revision_id": 5, "created_at": "2024-01-10T00:00:00Z"}
+    {"name": "main", "base_revision": 1, "head_revision": 42, "current": true},
+    {"name": "canary", "base_revision": 40, "head_revision": 5, "current": false}
   ]
 }
 ```
@@ -225,7 +242,8 @@ Create a branch.
 ```json
 {
   "name": "canary",
-  "revision_id": 42
+  "base_revision": 42,
+  "head_revision": 42
 }
 ```
 

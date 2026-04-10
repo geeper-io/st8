@@ -14,23 +14,25 @@ Store the experiment config in a single document. Your application reads the rat
 ### Push the experiment config
 
 ```bash
-st8ctl apply \
-  --namespace myapp/prod \
-  --message "launch pricing experiment" \
-  --doc experiments='{
-    "new_pricing": {
-      "enabled": true,
-      "ratio": 0.1,
-      "variant": {
-        "price_display": "monthly",
-        "cta_text": "Start free trial"
-      },
-      "control": {
-        "price_display": "annual",
-        "cta_text": "Get started"
-      }
+cat > experiments.json <<'EOF'
+{
+  "new_pricing": {
+    "enabled": true,
+    "ratio": 0.1,
+    "variant": {
+      "price_display": "monthly",
+      "cta_text": "Start free trial"
+    },
+    "control": {
+      "price_display": "annual",
+      "cta_text": "Get started"
     }
-  }'
+  }
+}
+EOF
+st8ctl apply experiments.json \
+  --namespace myapp/prod \
+  --message "launch pricing experiment"
 ```
 
 ### Read and split in your app
@@ -114,12 +116,12 @@ func (h *Handler) PricingPage(w http.ResponseWriter, r *http.Request) {
 
 ```bash
 # Roll out to 50%
-st8ctl apply \
+cat > experiments.json <<'EOF'
+{"new_pricing": {"enabled": true, "ratio": 0.5}}
+EOF
+st8ctl apply experiments.json \
   --namespace myapp/prod \
-  --message "increase pricing experiment to 50%" \
-  --doc experiments='{
-    "new_pricing": {"enabled": true, "ratio": 0.5, ...}
-  }'
+  --message "increase pricing experiment to 50%"
 
 # Kill the experiment instantly if something goes wrong
 st8ctl rollback --checkpoint pre-experiment --message "abort pricing experiment"
@@ -138,19 +140,21 @@ This is ideal for:
 
 ```bash
 # Start from the stable state
-st8ctl checkpoint --name pre-experiment
+st8ctl checkpoint pre-experiment
 
 # Set up control branch (copy of main)
-st8ctl branch create control --from-checkpoint pre-experiment
+st8ctl branch create control --checkpoint pre-experiment
 
 # Set up variant branch
-st8ctl branch create variant-a --from-checkpoint pre-experiment
+st8ctl branch create variant-a --checkpoint pre-experiment
 
 # Write variant-specific config
-st8ctl apply \
+cat > recommendations.json <<'EOF'
+{"algorithm": "collaborative", "max_items": 12}
+EOF
+st8ctl apply recommendations.json \
   --branch variant-a \
-  --message "variant-a: new recommendation algorithm" \
-  --doc recommendations='{"algorithm":"collaborative","max_items":12}'
+  --message "variant-a: new recommendation algorithm"
 ```
 
 ### Your app reads the right branch per request
@@ -184,10 +188,12 @@ st8ctl restore \
   --message "promote variant-a: new recommendation algorithm"
 
 # Or just apply the winning config directly to main
-st8ctl apply \
+cat > recommendations.json <<'EOF'
+{"algorithm": "collaborative", "max_items": 12}
+EOF
+st8ctl apply recommendations.json \
   --branch main \
-  --message "promote: new recommendation algorithm" \
-  --doc recommendations='{"algorithm":"collaborative","max_items":12}'
+  --message "promote: new recommendation algorithm"
 ```
 
 ## Approach 3: Namespaces for tenant-level experiments
@@ -196,10 +202,16 @@ When you need completely isolated config per tenant or customer:
 
 ```bash
 # Tenant A gets default config
-st8ctl apply --namespace acme-corp --doc config='{"theme":"light","plan":"enterprise"}'
+cat > config.json <<'EOF'
+{"theme": "light", "plan": "enterprise"}
+EOF
+st8ctl apply config.json --namespace acme-corp
 
 # Tenant B is in a beta program
-st8ctl apply --namespace globex-corp --doc config='{"theme":"dark","plan":"enterprise","beta":true}'
+cat > config.json <<'EOF'
+{"theme": "dark", "plan": "enterprise", "beta": true}
+EOF
+st8ctl apply config.json --namespace globex-corp
 ```
 
 ```go

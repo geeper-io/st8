@@ -12,15 +12,17 @@ Feature flags let you ship code that's disabled by default and enable it for spe
 Create a `feature_flags` document in your namespace:
 
 ```bash
-st8ctl apply \
+cat > feature_flags.json <<'EOF'
+{
+  "new_checkout": false,
+  "dark_mode": true,
+  "ai_search": false,
+  "max_upload_mb": 10
+}
+EOF
+st8ctl apply feature_flags.json \
   --namespace myapp/prod \
-  --message "initial feature flags" \
-  --doc feature_flags='{
-    "new_checkout": false,
-    "dark_mode": true,
-    "ai_search": false,
-    "max_upload_mb": 10
-  }'
+  --message "initial feature flags"
 ```
 
 ## Read flags in Go
@@ -137,15 +139,17 @@ func (s *Server) Search(w http.ResponseWriter, r *http.Request) {
 
 ```bash
 # Enable AI search for everyone
-st8ctl apply \
+cat > feature_flags.json <<'EOF'
+{
+  "new_checkout": false,
+  "dark_mode": true,
+  "ai_search": true,
+  "max_upload_mb": 10
+}
+EOF
+st8ctl apply feature_flags.json \
   --namespace myapp/prod \
-  --message "enable ai search" \
-  --doc feature_flags='{
-    "new_checkout": false,
-    "dark_mode": true,
-    "ai_search": true,
-    "max_upload_mb": 10
-  }'
+  --message "enable ai search"
 ```
 
 Your app picks up the change within seconds (based on the poll interval). No deploy, no restart.
@@ -155,15 +159,20 @@ Your app picks up the change within seconds (based on the poll interval). No dep
 The same mechanism works as a kill switch — set `enabled: false` to immediately disable a misbehaving feature:
 
 ```bash
-st8ctl apply \
+st8ctl apply feature_flags.json \
   --namespace myapp/prod \
-  --message "kill switch: disable ai search (latency spike)" \
-  --doc feature_flags='{
-    "new_checkout": false,
-    "dark_mode": true,
-    "ai_search": false,
-    "max_upload_mb": 10
-  }'
+  --message "kill switch: disable ai search (latency spike)"
+```
+
+where `feature_flags.json` contains:
+
+```json
+{
+  "new_checkout": false,
+  "dark_mode": true,
+  "ai_search": false,
+  "max_upload_mb": 10
+}
 ```
 
 Or use rollback if you have a checkpoint:
@@ -178,14 +187,15 @@ Use namespaces to maintain separate flags per environment:
 
 ```bash
 # Staging gets the flag first
-st8ctl apply --namespace myapp/staging \
-  --message "enable ai search in staging" \
-  --doc feature_flags='{"ai_search": true, ...}'
+cat > feature_flags.json <<'EOF'
+{"ai_search": true}
+EOF
+st8ctl apply feature_flags.json --namespace myapp/staging \
+  --message "enable ai search in staging"
 
 # After validation, enable in production
-st8ctl apply --namespace myapp/prod \
-  --message "enable ai search in production" \
-  --doc feature_flags='{"ai_search": true, ...}'
+st8ctl apply feature_flags.json --namespace myapp/prod \
+  --message "enable ai search in production"
 ```
 
 <Aside type="tip">

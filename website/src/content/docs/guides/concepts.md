@@ -20,9 +20,13 @@ Nothing is ever deleted or overwritten. You can always read any historical revis
 Within a revision, state is organized as **documents** — named blobs of arbitrary content (usually JSON, but st8 doesn't care). Each apply operation sets one or more documents.
 
 ```bash
-st8ctl apply \
-  --doc feature_flags='{"dark_mode":true}' \
-  --doc rate_limits='{"api":1000}'
+cat > feature_flags.json <<'EOF'
+{"dark_mode": true}
+EOF
+cat > rate_limits.json <<'EOF'
+{"api": 1000}
+EOF
+st8ctl apply feature_flags.json rate_limits.json
 ```
 
 Documents not included in an apply are carried forward unchanged. An apply with no actual changes is a no-op (no new revision is created).
@@ -56,13 +60,16 @@ Branches are also created implicitly on first write.
 
 ```bash
 # Write to a branch
-st8ctl apply --branch canary --doc config='{"timeout":5}'
+cat > config.json <<'EOF'
+{"timeout": 5}
+EOF
+st8ctl apply config.json --branch canary
 
 # Create a branch from a specific revision or checkpoint
-st8ctl branch create canary --from-checkpoint stable
+st8ctl branch create canary --checkpoint stable
 
 # List branches
-st8ctl branch list
+st8ctl branch
 
 # Restore a namespace/branch from another branch
 st8ctl restore --from-branch canary --message "promote canary to main"
@@ -73,7 +80,7 @@ st8ctl restore --from-branch canary --message "promote canary to main"
 A **checkpoint** is a named pointer to a specific revision. Think of it like a git tag.
 
 ```bash
-st8ctl checkpoint --name stable --description "Pre-launch verified state"
+st8ctl checkpoint stable --description "Pre-launch verified state"
 ```
 
 Checkpoints are useful for:

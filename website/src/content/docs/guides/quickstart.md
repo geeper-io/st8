@@ -32,17 +32,21 @@ Use `--local` to spin up an embedded st8d instance backed by a local directory. 
 
 ```bash
 # Write some config
-st8ctl --local apply \
-  --message "initial config" \
-  --doc feature_flags='{"dark_mode":true,"new_checkout":false}'
+cat > feature_flags.json <<'EOF'
+{"dark_mode": true, "new_checkout": false}
+EOF
+st8ctl --local apply feature_flags.json \
+  --message "initial config"
 
 # Read it back
 st8ctl --local get
 
 # Change a value
-st8ctl --local apply \
-  --message "enable new checkout" \
-  --doc feature_flags='{"dark_mode":true,"new_checkout":true}'
+cat > feature_flags.json <<'EOF'
+{"dark_mode": true, "new_checkout": true}
+EOF
+st8ctl --local apply feature_flags.json \
+  --message "enable new checkout"
 
 # See the history
 st8ctl --local log
@@ -80,9 +84,11 @@ st8ctl --local log
 3. **Push config**
 
    ```bash
-   st8ctl apply \
-     --message "initial config" \
-     --doc rate_limits='{"api":1000,"search":100}'
+   cat > rate_limits.json <<'EOF'
+   {"api": 1000, "search": 100}
+   EOF
+   st8ctl apply rate_limits.json \
+     --message "initial config"
    ```
 
 4. **Read config in your app**
@@ -123,7 +129,7 @@ st8ctl --local log
 
 ```bash
 # Tag the current state
-st8ctl checkpoint --name stable --description "Verified good state"
+st8ctl checkpoint stable --description "Verified good state"
 
 # Later, if something goes wrong
 st8ctl rollback --checkpoint stable --message "Revert to stable"
