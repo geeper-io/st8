@@ -10,17 +10,21 @@ import (
 
 func (a *App) applyCommand() *cobra.Command {
 	var message string
+	var files, values []string
 	cmd := &cobra.Command{
-		Use:   "apply <file> [file...]",
-		Short: "Apply one or more files into state",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "apply [-f file...] [--value key=value...] [file...]",
+		Short: "Apply files and/or key=value pairs into state",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			allFiles := append(files, args...)
+			if len(allFiles) == 0 && len(values) == 0 {
+				return fmt.Errorf("provide at least one -f <file> or --value key=value")
+			}
 			backend, cleanup, err := a.chooseClient(cmd.Context())
 			if err != nil {
 				return err
 			}
 			defer cleanup()
-			docs, err := loadDocuments(args)
+			docs, err := loadDocumentsWithValues(allFiles, values)
 			if err != nil {
 				return err
 			}
@@ -44,5 +48,7 @@ func (a *App) applyCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&message, "message", "", "revision message")
+	cmd.Flags().StringArrayVarP(&files, "file", "f", nil, "file or directory to apply (repeatable)")
+	cmd.Flags().StringArrayVar(&values, "value", nil, "key=value pair to apply (repeatable)")
 	return cmd
 }

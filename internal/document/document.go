@@ -3,6 +3,7 @@ package document
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,8 +14,15 @@ type Item struct {
 	Content string
 }
 
+// Load reads files/dirs from paths and merges literal key=value pairs.
+// Literal pairs take the form "key=value"; everything else is treated as a file path.
 func Load(paths []string) ([]Item, error) {
-	out := make([]Item, 0, len(paths))
+	return LoadWithValues(paths, nil)
+}
+
+// LoadWithValues reads files from paths and appends literal key=value items.
+func LoadWithValues(paths []string, values []string) ([]Item, error) {
+	out := make([]Item, 0, len(paths)+len(values))
 	for _, path := range paths {
 		raw, err := os.ReadFile(path)
 		if err != nil {
@@ -24,6 +32,13 @@ func Load(paths []string) ([]Item, error) {
 			Key:     NormalizeKey(path),
 			Content: NormalizeContent(path, raw),
 		})
+	}
+	for _, kv := range values {
+		k, v, ok := strings.Cut(kv, "=")
+		if !ok || k == "" {
+			return nil, fmt.Errorf("--value %q: expected key=value", kv)
+		}
+		out = append(out, Item{Key: k, Content: v})
 	}
 	return out, nil
 }
