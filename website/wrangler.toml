@@ -1,0 +1,6 @@
+name = "st8"
+compatibility_date = "2025-09-27"
+preview_urls = false
+
+[assets]
+directory = "dist"
