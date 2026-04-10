@@ -89,7 +89,7 @@ EOF
 Start a temporary local `st8d` and apply:
 
 ```bash
-st8ctl --local --namespace payments/prod apply config.json
+st8ctl --local --namespace payments/prod apply -f config.json
 ```
 
 See history:
@@ -140,7 +140,7 @@ st8d --listen :8748 --state-dir .st8d \
 Then point the CLI at it:
 
 ```bash
-st8ctl --server http://127.0.0.1:8748 --namespace payments/prod apply config.json
+st8ctl --server http://127.0.0.1:8748 --namespace payments/prod apply -f config.json
 st8ctl --server http://127.0.0.1:8748 --namespace payments/prod log
 st8ctl --server http://127.0.0.1:8748 --namespace payments/prod checkpoint before-change
 ```
@@ -151,7 +151,7 @@ st8ctl --server http://127.0.0.1:8748 --namespace payments/prod checkpoint befor
 
 ```bash
 st8ctl --namespace payments/prod diff config.json
-st8ctl --namespace payments/prod apply config.json
+st8ctl --namespace payments/prod apply -f config.json
 ```
 
 ### Roll Back To A Checkpoint
@@ -181,7 +181,7 @@ Example:
 
 ```bash
 st8ctl --namespace payments/prod branch create migration-test --checkpoint before-change
-st8ctl --namespace payments/prod --branch migration-test apply config.json
+st8ctl --namespace payments/prod --branch migration-test apply -f config.json
 st8ctl --namespace payments/prod --branch migration-test log
 ```
 

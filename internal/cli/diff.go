@@ -41,6 +41,6 @@ func (a *App) diffCommand() *cobra.Command {
 	cmd.Flags().Int64Var(&revision, "revision", 0, "diff against a specific revision")
 	cmd.Flags().StringVar(&checkpoint, "checkpoint", "", "diff against a named checkpoint")
 	cmd.Flags().StringArrayVarP(&files, "file", "f", nil, "file or directory to diff (repeatable)")
-	cmd.Flags().StringArrayVar(&values, "value", nil, "key=value pair to diff (repeatable)")
+	cmd.Flags().StringArrayVarP(&values, "value", "v", nil, "key=value pair to diff (repeatable)")
 	return cmd
 }

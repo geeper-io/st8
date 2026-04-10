@@ -20,7 +20,7 @@ cat > feature_flags.json <<'EOF'
   "max_upload_mb": 10
 }
 EOF
-st8ctl apply feature_flags.json \
+st8ctl apply -f feature_flags.json \
   --namespace myapp/prod \
   --message "initial feature flags"
 ```
@@ -147,7 +147,7 @@ cat > feature_flags.json <<'EOF'
   "max_upload_mb": 10
 }
 EOF
-st8ctl apply feature_flags.json \
+st8ctl apply -f feature_flags.json \
   --namespace myapp/prod \
   --message "enable ai search"
 ```
@@ -159,7 +159,7 @@ Your app picks up the change within seconds (based on the poll interval). No dep
 The same mechanism works as a kill switch — set `enabled: false` to immediately disable a misbehaving feature:
 
 ```bash
-st8ctl apply feature_flags.json \
+st8ctl apply -f feature_flags.json \
   --namespace myapp/prod \
   --message "kill switch: disable ai search (latency spike)"
 ```
@@ -190,11 +190,11 @@ Use namespaces to maintain separate flags per environment:
 cat > feature_flags.json <<'EOF'
 {"ai_search": true}
 EOF
-st8ctl apply feature_flags.json --namespace myapp/staging \
+st8ctl apply -f feature_flags.json --namespace myapp/staging \
   --message "enable ai search in staging"
 
 # After validation, enable in production
-st8ctl apply feature_flags.json --namespace myapp/prod \
+st8ctl apply -f feature_flags.json --namespace myapp/prod \
   --message "enable ai search in production"
 ```
 

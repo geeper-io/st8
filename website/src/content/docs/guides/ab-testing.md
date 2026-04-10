@@ -30,7 +30,7 @@ cat > experiments.json <<'EOF'
   }
 }
 EOF
-st8ctl apply experiments.json \
+st8ctl apply -f experiments.json \
   --namespace myapp/prod \
   --message "launch pricing experiment"
 ```
@@ -119,7 +119,7 @@ func (h *Handler) PricingPage(w http.ResponseWriter, r *http.Request) {
 cat > experiments.json <<'EOF'
 {"new_pricing": {"enabled": true, "ratio": 0.5}}
 EOF
-st8ctl apply experiments.json \
+st8ctl apply -f experiments.json \
   --namespace myapp/prod \
   --message "increase pricing experiment to 50%"
 
@@ -152,7 +152,7 @@ st8ctl branch create variant-a --checkpoint pre-experiment
 cat > recommendations.json <<'EOF'
 {"algorithm": "collaborative", "max_items": 12}
 EOF
-st8ctl apply recommendations.json \
+st8ctl apply -f recommendations.json \
   --branch variant-a \
   --message "variant-a: new recommendation algorithm"
 ```
@@ -191,7 +191,7 @@ st8ctl restore \
 cat > recommendations.json <<'EOF'
 {"algorithm": "collaborative", "max_items": 12}
 EOF
-st8ctl apply recommendations.json \
+st8ctl apply -f recommendations.json \
   --branch main \
   --message "promote: new recommendation algorithm"
 ```
@@ -205,13 +205,13 @@ When you need completely isolated config per tenant or customer:
 cat > config.json <<'EOF'
 {"theme": "light", "plan": "enterprise"}
 EOF
-st8ctl apply config.json --namespace acme-corp
+st8ctl apply -f config.json --namespace acme-corp
 
 # Tenant B is in a beta program
 cat > config.json <<'EOF'
 {"theme": "dark", "plan": "enterprise", "beta": true}
 EOF
-st8ctl apply config.json --namespace globex-corp
+st8ctl apply -f config.json --namespace globex-corp
 ```
 
 ```go

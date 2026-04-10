@@ -24,29 +24,34 @@ These flags are available on every command.
 
 ## apply
 
-Apply one or more files to the current namespace/branch. Each file path becomes the document key.
+Apply one or more files or inline values to the current namespace/branch.
 
 ```
-st8ctl apply <file> [file...] [flags]
+st8ctl apply [-f file...] [-v key=value...] [flags]
 ```
 
-| Flag | Description |
-|---|---|
-| `--message` | Commit message describing the change |
-| `--namespace` | Target namespace (overrides global) |
-| `--branch` | Target branch (overrides global) |
+| Flag | Default | Description |
+|---|---|---|
+| `-f`, `--file` | | File to apply (repeatable) |
+| `-v`, `--value` | | Inline `key=value` pair to apply (repeatable) |
+| `--message` | | Commit message describing the change |
+| `--namespace` | | Target namespace (overrides global) |
+| `--branch` | | Target branch (overrides global) |
 
 **Examples**
 
 ```bash
 # Apply a single file
-st8ctl apply feature_flags.json --message "enable dark mode"
+st8ctl apply -f feature_flags.json --message "enable dark mode"
 
 # Apply multiple files
-st8ctl apply feature_flags.json rate_limits.json --message "update config"
+st8ctl apply -f feature_flags.json -f rate_limits.json --message "update config"
+
+# Apply an inline value
+st8ctl apply -v feature_flags='{"dark_mode":true}' --message "enable dark mode"
 
 # Apply to a specific namespace and branch
-st8ctl apply rate_limits.json \
+st8ctl apply -f rate_limits.json \
   --namespace payments/prod \
   --branch canary \
   --message "canary: new rate limits"
@@ -101,21 +106,23 @@ st8ctl log --limit 50
 
 ## diff
 
-Show what would change if the given files were applied, without actually applying them.
+Show what would change if the given files or values were applied, without actually applying them.
 
 ```
-st8ctl diff [file...] [flags]
+st8ctl diff [-f file...] [-v key=value...] [flags]
 ```
 
 | Flag | Description |
 |---|---|
+| `-f`, `--file` | File to diff (repeatable) |
+| `-v`, `--value` | Inline `key=value` pair to diff (repeatable) |
 | `--revision` | Compare against a specific revision |
 | `--checkpoint` | Compare against a checkpoint |
 
 **Example**
 
 ```bash
-st8ctl diff feature_flags.json
+st8ctl diff -f feature_flags.json
 ```
 
 ## checkpoint

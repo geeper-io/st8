@@ -49,6 +49,6 @@ func (a *App) applyCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&message, "message", "", "revision message")
 	cmd.Flags().StringArrayVarP(&files, "file", "f", nil, "file or directory to apply (repeatable)")
-	cmd.Flags().StringArrayVar(&values, "value", nil, "key=value pair to apply (repeatable)")
+	cmd.Flags().StringArrayVarP(&values, "value", "v", nil, "key=value pair to apply (repeatable)")
 	return cmd
 }

@@ -200,7 +200,7 @@ func (c *cachedConfig) RefreshWithDiff(ctx context.Context, docs []st8.Document)
 cat > feature_flags.json <<'EOF'
 {"dark_mode": true, "new_checkout": true, "max_page_size": 200}
 EOF
-st8ctl apply feature_flags.json \
+st8ctl apply -f feature_flags.json \
   --namespace myapp/prod \
   --message "increase page size limit"
 

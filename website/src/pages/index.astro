@@ -537,15 +537,16 @@ const features = [
         </div>
         <div class="terminal-body">
             <div><span class="t-comment"># Push config — no restart, no redeploy</span></div>
-            <div><span class="t-dim">$</span> <span class="t-cmd">st8ctl apply <span class="t-blue">--message</span> <span class="t-yellow">"enable new checkout"</span> <span class="t-blue">--doc</span> <span class="t-yellow">feature_flags='&#123;"new_checkout":true&#125;'</span></span></div>
+            <div><span class="t-dim">$</span> <span class="t-cmd">echo <span class="t-yellow">'&#123;"new_checkout":true&#125;'</span> &gt; feature_flags.json</span></div>
+            <div><span class="t-dim">$</span> <span class="t-cmd">st8ctl <span class="t-blue">--local</span> apply <span class="t-blue">-f</span> feature_flags.json <span class="t-blue">--message</span> <span class="t-yellow">"enable new checkout"</span></span></div>
             <div><span class="t-green">✓</span> <span class="t-cmd">Revision 42 created</span></div>
             <div>&nbsp;</div>
             <div><span class="t-comment"># Tag a known-good state</span></div>
-            <div><span class="t-dim">$</span> <span class="t-cmd">st8ctl checkpoint <span class="t-blue">--name</span> stable</span></div>
+            <div><span class="t-dim">$</span> <span class="t-cmd">st8ctl <span class="t-blue">--local</span> checkpoint stable</span></div>
             <div><span class="t-green">✓</span> <span class="t-cmd">Checkpoint <span class="t-green">"stable"</span> → rev 42</span></div>
             <div>&nbsp;</div>
             <div><span class="t-comment"># Something went wrong — roll back instantly</span></div>
-            <div><span class="t-dim">$</span> <span class="t-cmd">st8ctl rollback <span class="t-blue">--checkpoint</span> stable <span class="t-blue">--message</span> <span class="t-yellow">"revert: latency spike"</span></span></div>
+            <div><span class="t-dim">$</span> <span class="t-cmd">st8ctl <span class="t-blue">--local</span> rollback <span class="t-blue">--checkpoint</span> stable <span class="t-blue">--message</span> <span class="t-yellow">"revert: latency spike"</span></span></div>
             <div><span class="t-green">✓</span> <span class="t-cmd">Rolled back to rev 42 (rev 43 created)</span></div>
         </div>
     </div>

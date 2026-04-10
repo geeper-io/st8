@@ -79,7 +79,7 @@ Fetch the state of a namespace/branch.
 
 ```json
 {
-  "revision_id": 42,
+  "revision": 42,
   "objects": {
     "feature_flags": "{\"dark_mode\":true}",
     "rate_limits": "{\"api\":1000}"
@@ -129,7 +129,6 @@ Revision history for a namespace/branch.
 | `namespace` | Namespace |
 | `branch` | Branch |
 | `limit` | Maximum entries (default 20) |
-| `after` | Return entries after this revision ID (for pagination) |
 
 **Response:**
 
@@ -209,7 +208,7 @@ Roll back to a previous revision or checkpoint.
 
 List branches in a namespace.
 
-**Query parameters:** `namespace`, `branch` (for scope context), `limit`, `after`
+**Query parameters:** `namespace`, `branch` (for scope context)
 
 **Response:**
 

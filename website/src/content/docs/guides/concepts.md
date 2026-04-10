@@ -26,7 +26,7 @@ EOF
 cat > rate_limits.json <<'EOF'
 {"api": 1000}
 EOF
-st8ctl apply feature_flags.json rate_limits.json
+st8ctl apply -f feature_flags.json -f rate_limits.json
 ```
 
 Documents not included in an apply are carried forward unchanged. An apply with no actual changes is a no-op (no new revision is created).
@@ -63,7 +63,7 @@ Branches are also created implicitly on first write.
 cat > config.json <<'EOF'
 {"timeout": 5}
 EOF
-st8ctl apply config.json --branch canary
+st8ctl apply -f config.json --branch canary
 
 # Create a branch from a specific revision or checkpoint
 st8ctl branch create canary --checkpoint stable

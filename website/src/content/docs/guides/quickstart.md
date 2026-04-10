@@ -35,7 +35,7 @@ Use `--local` to spin up an embedded st8d instance backed by a local directory. 
 cat > feature_flags.json <<'EOF'
 {"dark_mode": true, "new_checkout": false}
 EOF
-st8ctl --local apply feature_flags.json \
+st8ctl --local apply -f feature_flags.json \
   --message "initial config"
 
 # Read it back
@@ -45,7 +45,7 @@ st8ctl --local get
 cat > feature_flags.json <<'EOF'
 {"dark_mode": true, "new_checkout": true}
 EOF
-st8ctl --local apply feature_flags.json \
+st8ctl --local apply -f feature_flags.json \
   --message "enable new checkout"
 
 # See the history
@@ -87,7 +87,7 @@ st8ctl --local log
    cat > rate_limits.json <<'EOF'
    {"api": 1000, "search": 100}
    EOF
-   st8ctl apply rate_limits.json \
+   st8ctl apply -f rate_limits.json \
      --message "initial config"
    ```
 
