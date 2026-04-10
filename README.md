@@ -194,15 +194,16 @@ st8ctl --namespace payments/prod restore --from-branch migration-test
 ## Command Summary
 
 ```text
-apply       Apply one or more files into state
-get         Read current or historical state
-diff        Compare current state to files or a prior revision
-checkpoint  Create a named checkpoint
-rollback    Roll back to a revision or checkpoint
-log         Show revision history  (--after=<id> for pagination)
-branch      List branches or create a new branch  (--after=<name> for pagination)
-restore     Restore state from a revision, checkpoint, or branch
-gc          Garbage-collect old revisions  (--keep N, default 10)
+apply              Apply one or more files into state
+get                Read current or historical state
+diff               Compare current state to files or a prior revision
+checkpoint         Create a named checkpoint
+checkpoint delete  Delete a named checkpoint
+rollback           Roll back to a revision or checkpoint
+log                Show revision history
+branch             List branches or create a new branch
+restore            Restore state from a revision, checkpoint, or branch
+gc                 Garbage-collect old revisions  (--keep N, default 10)
 ```
 
 ## Current Notes
