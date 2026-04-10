@@ -1,0 +1,290 @@
+---
+title: CI/CD Integration
+description: Diff config on pull requests and apply on merge using GitHub Actions.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Store config files in Git and let CI handle the lifecycle: **diff on pull request, apply on merge**. Every config change gets a review, an audit trail, and an automatic rollback checkpoint.
+
+## Repository layout
+
+Keep config files in a dedicated directory so CI can track changes to them:
+
+```
+repo/
+└── config/
+    ├── feature_flags.json
+    ├── rate_limits.json
+    └── service_config.json
+```
+
+## Prerequisites
+
+Add two secrets to your GitHub repository (**Settings → Secrets and variables → Actions**):
+
+| Secret | Value |
+|---|---|
+| `ST8_SERVER` | Your st8d URL, e.g. `https://st8.internal` |
+| `ST8_TOKEN` | Bearer token configured in st8d |
+
+## Diff on pull request
+
+On every PR that touches `config/`, run `st8ctl diff` against each changed file and post the output as a PR comment.
+
+```yaml
+# .github/workflows/st8-diff.yml
+name: Config diff
+
+on:
+  pull_request:
+    paths:
+      - 'config/**'
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install st8ctl
+        run: go install github.com/geeper-io/st8/cmd/st8ctl@latest
+
+      - name: Diff config files
+        run: |
+          args=()
+          for f in config/*.json; do args+=(-f "$f"); done
+          output=$(st8ctl \
+            --server "$ST8_SERVER" \
+            --token "$ST8_TOKEN" \
+            --namespace myapp/prod \
+            diff "${args[@]}" 2>&1 || true)
+
+          if [ -z "$output" ]; then
+            body="## Config diff\n\n_No changes._"
+          else
+            body="## Config diff\n\n\`\`\`diff\n${output}\n\`\`\`"
+          fi
+
+          printf '%s' "$body" > /tmp/diff-body.md
+        env:
+          ST8_SERVER: ${{ secrets.ST8_SERVER }}
+          ST8_TOKEN: ${{ secrets.ST8_TOKEN }}
+
+      - name: Post PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('/tmp/diff-body.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
+```
+
+The PR comment will look like:
+
+```diff
+**`config/feature_flags.json`**
+  "new_checkout": false,
+- "ai_search": false,
++ "ai_search": true,
+  "max_upload_mb": 10
+```
+
+## Apply on merge
+
+When a PR merges to `main`, apply all config files and create a checkpoint named after the commit SHA so you can roll back to it later.
+
+```yaml
+# .github/workflows/st8-apply.yml
+name: Apply config
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'config/**'
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install st8ctl
+        run: go install github.com/geeper-io/st8/cmd/st8ctl@latest
+
+      - name: Apply config
+        run: |
+          args=()
+          for f in config/*.json; do args+=(-f "$f"); done
+          st8ctl \
+            --server "$ST8_SERVER" \
+            --token "$ST8_TOKEN" \
+            --namespace myapp/prod \
+            apply "${args[@]}" \
+            --message "deploy: ${{ github.sha }}"
+        env:
+          ST8_SERVER: ${{ secrets.ST8_SERVER }}
+          ST8_TOKEN: ${{ secrets.ST8_TOKEN }}
+
+      - name: Checkpoint
+        run: |
+          st8ctl \
+            --server "$ST8_SERVER" \
+            --token "$ST8_TOKEN" \
+            --namespace myapp/prod \
+            checkpoint "sha-${{ github.sha }}" \
+            --description "Deployed from ${{ github.sha }}"
+        env:
+          ST8_SERVER: ${{ secrets.ST8_SERVER }}
+          ST8_TOKEN: ${{ secrets.ST8_TOKEN }}
+```
+
+## Emergency rollback
+
+If a deploy causes problems, roll back to any previous checkpoint directly from the terminal:
+
+```bash
+# List recent deploys to find a good one
+st8ctl --server https://st8.internal --token $ST8_TOKEN \
+  --namespace myapp/prod \
+  log --limit 10
+
+# Roll back to a specific deploy
+st8ctl --server https://st8.internal --token $ST8_TOKEN \
+  --namespace myapp/prod \
+  rollback \
+  --checkpoint sha-abc1234 \
+  --message "rollback: revert bad config deploy"
+```
+
+Or trigger a rollback workflow that accepts the target SHA:
+
+```yaml
+# .github/workflows/st8-rollback.yml
+name: Rollback config
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Commit SHA to roll back to'
+        required: true
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install st8ctl
+        run: go install github.com/geeper-io/st8/cmd/st8ctl@latest
+
+      - name: Rollback
+        run: |
+          st8ctl \
+            --server "$ST8_SERVER" \
+            --token "$ST8_TOKEN" \
+            --namespace myapp/prod \
+            rollback \
+            --checkpoint "sha-${{ github.event.inputs.sha }}" \
+            --message "rollback: revert to ${{ github.event.inputs.sha }}"
+        env:
+          ST8_SERVER: ${{ secrets.ST8_SERVER }}
+          ST8_TOKEN: ${{ secrets.ST8_TOKEN }}
+```
+
+Trigger it from the GitHub Actions UI or with `gh workflow run st8-rollback.yml -f sha=abc1234`.
+
+## Multi-environment: staging then production
+
+Use separate namespaces and a `production` environment gate to require human approval before applying to prod.
+
+```yaml
+# .github/workflows/st8-apply.yml
+name: Apply config
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'config/**'
+
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go install github.com/geeper-io/st8/cmd/st8ctl@latest
+      - name: Apply to staging
+        run: |
+          args=()
+          for f in config/*.json; do args+=(-f "$f"); done
+          st8ctl \
+            --server "$ST8_SERVER" \
+            --token "$ST8_TOKEN" \
+            --namespace myapp/staging \
+            apply "${args[@]}" \
+            --message "staging: ${{ github.sha }}"
+        env:
+          ST8_SERVER: ${{ secrets.ST8_SERVER }}
+          ST8_TOKEN: ${{ secrets.ST8_TOKEN }}
+
+  production:
+    needs: staging
+    runs-on: ubuntu-latest
+    environment: production   # requires manual approval in GitHub
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go install github.com/geeper-io/st8/cmd/st8ctl@latest
+      - name: Apply to production
+        run: |
+          args=()
+          for f in config/*.json; do args+=(-f "$f"); done
+          st8ctl \
+            --server "$ST8_SERVER" \
+            --token "$ST8_TOKEN" \
+            --namespace myapp/prod \
+            apply "${args[@]}" \
+            --message "prod: ${{ github.sha }}"
+          st8ctl \
+            --server "$ST8_SERVER" \
+            --token "$ST8_TOKEN" \
+            --namespace myapp/prod \
+            checkpoint "sha-${{ github.sha }}" \
+            --description "Deployed ${{ github.sha }}"
+        env:
+          ST8_SERVER: ${{ secrets.ST8_SERVER }}
+          ST8_TOKEN: ${{ secrets.ST8_TOKEN }}
+```
+
+The `environment: production` gate pauses the job until an approver clicks **Review deployments** in GitHub Actions.
+
+<Aside type="tip">
+For automated rollback, combine this with monitoring: if error rate exceeds a threshold after deploy, trigger the rollback workflow with `gh workflow run st8-rollback.yml -f sha=<previous-sha>`.
+</Aside>
