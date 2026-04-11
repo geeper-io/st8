@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -28,7 +29,7 @@ func newHandler(t *testing.T) http.Handler {
 
 func newT4Handler(t *testing.T) http.Handler {
 	t.Helper()
-	eng, err := t4kv.New(filepath.Join(t.TempDir(), ".st8d"), t4kv.Config{Logger: logging.Logger()})
+	eng, err := t4kv.New(context.Background(), filepath.Join(t.TempDir(), ".st8d"), t4kv.Config{Logger: logging.Logger()})
 	if err != nil {
 		t.Fatalf("open t4kv engine: %v", err)
 	}

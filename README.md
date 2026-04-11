@@ -1,14 +1,14 @@
-# st8ctl
+# st8
 
 [![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?logo=go)](https://go.dev/)
 [![Backend](https://img.shields.io/badge/backend-t4-0F766E)](https://github.com/t4db/t4)
 [![Status](https://img.shields.io/badge/status-prototype-F59E0B)](#current-notes)
 
-`st8ctl` (like "state") safely applies, tracks, diffs, checkpoints, rolls back, and branches config state.
+`st8` (like "state") safely applies, tracks, diffs, checkpoints, rolls back, and branches config state.
 
 It is built around a simple idea: state changes should feel more like Git and less like `scp` plus hope.
 
-`st8ctl` gives config and operational state a proper lifecycle:
+`st8` gives config and operational state a proper lifecycle:
 
 - review what will change
 - apply it as an immutable revision
@@ -16,7 +16,7 @@ It is built around a simple idea: state changes should feel more like Git and le
 - branch for experiments
 - restore or roll back without rewriting history
 
-It is a pure client for `st8d` — all state lives in the daemon, `st8ctl` only talks to it over HTTP.
+`st8ctl` is a pure client for `st8d` — all state lives in the daemon, `st8ctl` only talks to it over HTTP.
 
 Under the hood, `st8d` uses [`t4`](https://github.com/t4db/t4) as its embedded persistence engine.
 
@@ -136,6 +136,26 @@ st8d --listen :8748 --state-dir .st8d \
 ```
 
 > **Proxy alternative:** if you already have an nginx / Caddy / Envoy reverse proxy in front, simply terminate TLS there and let `st8d` listen on plain HTTP on a local port.
+
+### S3 storage (durable mode)
+
+By default `st8d` stores everything locally. Pass `--s3-bucket` to archive WAL segments and checkpoints to S3, so data survives local disk loss:
+
+```bash
+# AWS S3
+st8d --listen :8748 --state-dir .st8d \
+     --s3-bucket my-st8-bucket \
+     --s3-prefix st8d/prod
+
+# MinIO or any S3-compatible store
+st8d --listen :8748 --state-dir .st8d \
+     --s3-bucket st8 \
+     --s3-endpoint http://minio:9000
+```
+
+All S3 flags can also be set via environment variables (`ST8D_S3_BUCKET`, `ST8D_S3_PREFIX`, `ST8D_S3_ENDPOINT`, `ST8D_S3_REGION`, `ST8D_S3_PROFILE`, `ST8D_S3_ACCESS_KEY_ID`, `ST8D_S3_SECRET_ACCESS_KEY`). CLI flags take precedence.
+
+For explicit credentials, prefer `ST8D_S3_ACCESS_KEY_ID` / `ST8D_S3_SECRET_ACCESS_KEY` or the matching `--s3-access-key-id` / `--s3-secret-access-key` flags. If those are not set, `st8d` can still resolve credentials from a named `--s3-profile` or the standard AWS SDK credential chain.
 
 Then point the CLI at it:
 

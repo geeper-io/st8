@@ -76,11 +76,49 @@ st8d [flags]
 | Flag | Default | Description |
 |---|---|---|
 | `--listen` | `:8748` | Address to listen on |
-| `--state-dir` | `.st8d` | Directory for persistent state |
+| `--state-dir` | `.st8d` | Directory for persistent state (Pebble data and local WAL) |
 | `--token` | `""` | Bearer token (authentication disabled if empty) |
 | `--read-timeout` | `30s` | HTTP read timeout |
 | `--write-timeout` | `60s` | HTTP write timeout |
 | `--idle-timeout` | `120s` | HTTP idle connection timeout |
+
+### S3 storage flags
+
+When `--s3-bucket` is set, `st8d` archives WAL segments and checkpoints to S3, providing durable storage that survives local disk loss. Without it, durability is local-only.
+
+| Flag | Env var | Default | Description |
+|---|---|---|---|
+| `--s3-bucket` | `ST8D_S3_BUCKET` | `""` | S3 bucket name for WAL archive and checkpoints |
+| `--s3-prefix` | `ST8D_S3_PREFIX` | `""` | Optional key prefix inside the bucket (e.g. `st8d/prod`) |
+| `--s3-endpoint` | `ST8D_S3_ENDPOINT` | `""` | Custom endpoint URL for MinIO or other S3-compatible stores (e.g. `http://minio:9000`) |
+| `--s3-region` | `ST8D_S3_REGION` | `""` | AWS region for the S3 client |
+| `--s3-profile` | `ST8D_S3_PROFILE` | `""` | Named profile from `~/.aws/config` (ignored when static credentials are set) |
+| `--s3-access-key-id` | `ST8D_S3_ACCESS_KEY_ID` | `""` | Static S3 access key ID (preferred for explicit configuration) |
+| `--s3-secret-access-key` | `ST8D_S3_SECRET_ACCESS_KEY` | `""` | Static S3 secret access key (preferred for explicit configuration) |
+
+All S3 flags can also be supplied via the corresponding environment variables. CLI flags take precedence.
+
+For explicit credentials, prefer `ST8D_S3_ACCESS_KEY_ID` / `ST8D_S3_SECRET_ACCESS_KEY` or the matching `--s3-access-key-id` / `--s3-secret-access-key` flags. When both static credential fields are set, `st8d` uses them directly and bypasses profile and AWS SDK chain resolution. Otherwise, credentials can be resolved from a named `--s3-profile` or the standard AWS SDK chain.
+
+#### Example: AWS S3
+
+```bash
+st8d --listen :8748 \
+     --state-dir /var/lib/st8 \
+     --s3-bucket my-st8-bucket \
+     --s3-prefix st8d/prod
+```
+
+#### Example: MinIO
+
+```bash
+st8d --listen :8748 \
+     --state-dir /var/lib/st8 \
+     --s3-bucket st8 \
+     --s3-endpoint http://minio:9000
+```
+
+Set `ST8D_S3_ACCESS_KEY_ID` and `ST8D_S3_SECRET_ACCESS_KEY` (or `--s3-access-key-id` / `--s3-secret-access-key`) to provide explicit credentials.
 
 ### Example systemd unit
 

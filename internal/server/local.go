@@ -18,7 +18,7 @@ type LocalInstance struct {
 }
 
 func StartLocal(ctx context.Context, stateDir string) (*LocalInstance, error) {
-	eng, err := t4kv.New(stateDir, t4kv.Config{Logger: logging.Logger()})
+	eng, err := t4kv.New(ctx, stateDir, t4kv.Config{Logger: logging.Logger()})
 	if err != nil {
 		return nil, err
 	}

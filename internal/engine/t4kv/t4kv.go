@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/t4db/t4"
+	"github.com/t4db/t4/pkg/object"
 
 	"github.com/geeper-io/st8/internal/engine"
 	"github.com/geeper-io/st8/internal/model"
@@ -40,22 +41,59 @@ const (
 type Config struct {
 	Logger            *logrus.Logger
 	MetricsRegisterer prometheus.Registerer
+
+	// S3Bucket, when non-empty, enables WAL archiving and checkpointing to S3.
+	// AWS credentials are resolved via the standard credential chain
+	// (env vars, ~/.aws/credentials, EC2/ECS metadata, etc.) unless
+	// S3AccessKeyID and S3SecretAccessKey are set.
+	S3Bucket string
+	// S3Prefix is an optional key prefix inside the bucket (may be empty).
+	S3Prefix string
+	// S3Endpoint overrides the default AWS endpoint, e.g. for MinIO or
+	// other S3-compatible object stores (http://minio:9000).
+	S3Endpoint string
+	// S3Region overrides the AWS region. When empty the region is resolved
+	// from the standard AWS chain.
+	S3Region string
+	// S3Profile selects a named profile from ~/.aws/config. Ignored when
+	// S3AccessKeyID is set.
+	S3Profile string
+	// S3AccessKeyID and S3SecretAccessKey provide static credentials,
+	// bypassing the default credential chain. Both must be set together.
+	S3AccessKeyID     string
+	S3SecretAccessKey string
 }
 
 type Engine struct {
 	node *t4.Node
 }
 
-func New(stateDir string, cfg Config) (*Engine, error) {
+func New(ctx context.Context, stateDir string, cfg Config) (*Engine, error) {
 	dataDir := filepath.Join(stateDir, "engine")
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return nil, err
 	}
-	node, err := t4.Open(t4.Config{
+	t4cfg := t4.Config{
 		DataDir:           dataDir,
 		Logger:            cfg.Logger,
 		MetricsRegisterer: cfg.MetricsRegisterer,
-	})
+	}
+	if cfg.S3Bucket != "" {
+		store, err := object.NewS3StoreFromConfig(ctx, object.S3Config{
+			Bucket:          cfg.S3Bucket,
+			Prefix:          cfg.S3Prefix,
+			Endpoint:        cfg.S3Endpoint,
+			Region:          cfg.S3Region,
+			Profile:         cfg.S3Profile,
+			AccessKeyID:     cfg.S3AccessKeyID,
+			SecretAccessKey: cfg.S3SecretAccessKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("init S3 store: %w", err)
+		}
+		t4cfg.ObjectStore = store
+	}
+	node, err := t4.Open(t4cfg)
 	if err != nil {
 		return nil, err
 	}
